@@ -5,18 +5,17 @@ import Script from "next/script";
 import Topbar from "@/components/Topbar";
 import Bottombar from "@/components/Bottombar";
 import SettingsPanel from "@/components/SettingsPanel";
+import { generatePaletteFromHex } from "@/lib/colorUtils";
 
-const themeNames: ThemeName[] = ["orange", "purple", "green", "teal", "rose", "blue"];
+const defaultColor = "#FFFFFF";
 
 export default function ArcadeClient() {
-  const [theme, setThemeState] = useState<ThemeName>("orange");
+  const [customColor, setCustomColor] = useState(defaultColor);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showHomeButton, setShowHomeButton] = useState(true);
-
-  const isThemeName = useCallback(
-    (value: string): value is ThemeName => themeNames.includes(value as ThemeName),
-    [],
-  );
+  const [hideFlashGames, setHideFlashGames] = useState(true);
+  const [hidePortGames, setHidePortGames] = useState(false);
+  const [hideEmulatorGames, setHideEmulatorGames] = useState(false);
 
   const getCookie = useCallback((name: string) => {
     const value = `; ${document.cookie}`;
@@ -35,11 +34,8 @@ export default function ArcadeClient() {
   }, []);
 
   const applyTheme = useCallback(
-    (themeName: ThemeName) => {
-      // @ts-expect-error global from themes.js
-      const c = window.colors?.[themeName];
-      if (!c) return;
-
+    (hexColor: string) => {
+      const c = generatePaletteFromHex(hexColor);
       const root = document.documentElement;
       root.style.setProperty("--bg-color", c.bg);
       root.style.setProperty("--text-color", c.text);
@@ -48,7 +44,7 @@ export default function ArcadeClient() {
       root.style.setProperty("--card-border-color", c.border);
       root.style.setProperty("--card-overlay-color", c.overlay);
       root.style.setProperty("--bottombar-border-color", c.bottomBorder);
-      root.style.setProperty("--bottombar-opacity", c.opacity);
+      root.style.setProperty("--bottombar-opacity", String(c.opacity));
 
       document.querySelectorAll(".tos-button").forEach((btn) => {
         (btn as HTMLElement).style.backgroundColor = c.bg;
@@ -59,7 +55,8 @@ export default function ArcadeClient() {
       const svg = document.querySelector(".topbar .logo svg");
       if (svg) svg.querySelectorAll("path").forEach((p) => p.setAttribute("fill", c.svgColor));
 
-      setCookie("theme", themeName, 30);
+      setCustomColor(hexColor);
+      setCookie("customColor", hexColor, 30);
     },
     [setCookie],
   );
@@ -69,11 +66,10 @@ export default function ArcadeClient() {
   }, []);
 
   useEffect(() => {
-    const savedTheme = getCookie("theme");
-    const initialTheme = savedTheme && isThemeName(savedTheme) ? savedTheme : "orange";
-    if (!savedTheme) setCookie("theme", "orange", 30);
+    const savedColor = getCookie("customColor") || defaultColor;
+    if (!getCookie("customColor")) setCookie("customColor", defaultColor, 30);
+    applyTheme(savedColor);
 
-    setThemeState(initialTheme);
     const savedShowHomeButton = getCookie("showHomeButton");
     if (savedShowHomeButton === null) {
       setCookie("showHomeButton", "true", 30);
@@ -81,24 +77,40 @@ export default function ArcadeClient() {
     } else {
       setShowHomeButton(savedShowHomeButton !== "false");
     }
-  }, [getCookie, isThemeName, setCookie]);
+
+    const savedHideFlashGames = getCookie("hideFlashGames");
+    if (savedHideFlashGames === null) {
+      setCookie("hideFlashGames", "true", 30);
+      setHideFlashGames(true);
+    } else {
+      setHideFlashGames(savedHideFlashGames !== "false");
+    }
+
+    const savedHidePortGames = getCookie("hidePortGames");
+    if (savedHidePortGames === null) {
+      setCookie("hidePortGames", "false", 30);
+      setHidePortGames(false);
+    } else {
+      setHidePortGames(savedHidePortGames === "true");
+    }
+
+    const savedHideEmulatorGames = getCookie("hideEmulatorGames");
+    if (savedHideEmulatorGames === null) {
+      setCookie("hideEmulatorGames", "false", 30);
+      setHideEmulatorGames(false);
+    } else {
+      setHideEmulatorGames(savedHideEmulatorGames === "true");
+    }
+  }, [applyTheme, getCookie, setCookie]);
 
   useEffect(() => {
-    applyTheme(theme);
-  }, [applyTheme, theme]);
+    applyTheme(customColor);
+  }, [applyTheme, customColor]);
 
   useEffect(() => {
     const settingsButton = document.getElementById("settingsButton");
     settingsButton?.classList.toggle("settings-open", settingsOpen);
   }, [settingsOpen]);
-
-  const handleThemeChange = useCallback(
-    (themeName: string) => {
-      if (!isThemeName(themeName)) return;
-      setThemeState(themeName);
-    },
-    [isThemeName],
-  );
 
   const exportProgress = useCallback(() => {
     const allStorage: Record<string, string> = {};
@@ -140,7 +152,7 @@ export default function ArcadeClient() {
       <Script src="/js/themes.js" strategy="beforeInteractive" />
 
       {/* Now Topbar receives required props */}
-      <Topbar color={theme} onSettingsClick={toggleSettings} />
+      <Topbar color={customColor} onSettingsClick={toggleSettings} />
 
       <div className="main-content">
         {/* ... unchanged ... */}
@@ -149,8 +161,8 @@ export default function ArcadeClient() {
       <Bottombar />
       <SettingsPanel
         isOpen={settingsOpen}
-        theme={theme}
-        onThemeChange={handleThemeChange}
+        color={customColor}
+        onColorChange={applyTheme}
         onExport={exportProgress}
         onImportClick={handleImportClick}
         onFileImport={importProgress}
@@ -158,6 +170,21 @@ export default function ArcadeClient() {
         onHomeButtonToggle={(nextValue) => {
           setShowHomeButton(nextValue);
           setCookie("showHomeButton", String(nextValue), 30);
+        }}
+        hideFlashGames={hideFlashGames}
+        onHideFlashGamesToggle={(nextValue) => {
+          setHideFlashGames(nextValue);
+          setCookie("hideFlashGames", String(nextValue), 30);
+        }}
+        hidePortGames={hidePortGames}
+        onHidePortGamesToggle={(nextValue) => {
+          setHidePortGames(nextValue);
+          setCookie("hidePortGames", String(nextValue), 30);
+        }}
+        hideEmulatorGames={hideEmulatorGames}
+        onHideEmulatorGamesToggle={(nextValue) => {
+          setHideEmulatorGames(nextValue);
+          setCookie("hideEmulatorGames", String(nextValue), 30);
         }}
       />
     </>
