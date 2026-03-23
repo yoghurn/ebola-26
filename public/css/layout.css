@@ -1,0 +1,57 @@
+.grid-section {
+    margin: 40px auto 0;
+    padding: 0 40px;
+}
+
+.main-content {
+    display: flex;
+    max-width: 1200px;
+    margin: 40px auto 0;
+    padding: 0 40px;
+}
+
+.games-container {
+    flex: 1;
+}
+
+.ad-sidebar {
+    position: fixed;
+    left: 40px;
+    top: calc(50vh - 300px);
+    width: 200px;
+    height: 600px;
+    overflow: auto;
+    z-index: 10;
+    scrollbar-width: none;
+}
+
+.ad-sidebar::-webkit-scrollbar {
+    display: none;
+}
+
+.ad-scroll {
+    animation: scroll-vertical 20s linear infinite;
+}
+
+.ad-scroll:hover {
+    animation-play-state: paused;
+}
+
+@keyframes scroll-vertical {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-50%); }
+}
+
+#recentlyPlayedGrid,
+#gameGrid,
+#tvGrid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 30px;
+    place-items: center;
+}
+
+@media (max-width: 1200px) { #gameGrid, #recentlyPlayedGrid, #tvGrid { grid-template-columns: repeat(4, 1fr); } .ad-sidebar { width: 180px; } }
+@media (max-width: 992px)  { #gameGrid, #recentlyPlayedGrid, #tvGrid { grid-template-columns: repeat(3, 1fr); } .ad-sidebar { width: 150px; } }
+@media (max-width: 768px)  { #gameGrid, #recentlyPlayedGrid, #tvGrid { grid-template-columns: repeat(2, 1fr); } .ad-sidebar { display: none; } .main-content { flex-direction: column; } .games-container { margin-top: 20px; } }
+@media (max-width: 500px)  { #gameGrid, #recentlyPlayedGrid, #tvGrid { grid-template-columns: 1fr; } }

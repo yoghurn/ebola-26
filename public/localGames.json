@@ -1,0 +1,28 @@
+[
+  {
+    "id": 108080,
+    "name": "Minecraft 1.8.8",
+    "url": "/arcade/games/minecraft/1.8.8/index.html",
+    "cover": "/arcade/assets/thumbnails/minecraft_1_8_8.png",
+    "author": "Mojang",
+    "tags": ["local", "classic"]
+  },
+  {
+    "id": 108081,
+    "name": "Polytrack",
+    "url": "/arcade/games/polytrack.html",
+    "cover": "/arcade/assets/thumbnails/polytrack.png"
+  },
+  {
+    "id": 108082,
+    "name": "Apple Worm",
+    "url": "/arcade/games/appleworm.html",
+    "cover": "/arcade/assets/thumbnails/appleworm.png"
+  },
+  {
+    "id": 108083,
+    "name": "Escape Road 2",
+    "url": "/arcade/games/escape-road-2.html",
+    "cover": "/arcade/assets/thumbnails/escape-road-2.png"
+  }
+]
