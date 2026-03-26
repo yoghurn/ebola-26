@@ -191,18 +191,15 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
         setCloudProgress(cloudRecord);
         lastSyncedStateRef.current = cloudRecord?.progress ? serializeCloudSyncState(normalizeCloudSyncPayload(cloudRecord.progress)) : null;
         if (cloudRecord?.progress) {
-          writeLocalCloudSyncState(cloudRecord.progress);
           setStatusMessage(
             cloudRecord?.syncedAt
-              ? `Loaded cloud progress from ${new Date(cloudRecord.syncedAt).toLocaleString()}.`
-              : 'Loaded cloud progress.',
+              ? `Signed in. Cloud progress is available from ${new Date(cloudRecord.syncedAt).toLocaleString()}, but your current local progress was kept.`
+              : 'Signed in. Cloud progress is available, but your current local progress was kept.',
           );
-          window.location.reload();
-          return;
+        } else {
+          setShowSyncMenu(false);
+          setStatusMessage('Signed in. No cloud progress found for this account.');
         }
-
-        setShowSyncMenu(false);
-        setStatusMessage('No cloud progress found for this account.');
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Could not load cloud progress.';
         setErrorMessage(message);
