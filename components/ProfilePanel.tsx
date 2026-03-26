@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser';
 import {
+  clearLocalCloudSyncState,
   ensureLocalGameProgress,
   normalizeCloudSyncPayload,
   readLocalCloudSyncState,
@@ -38,6 +39,9 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showLoadConfirm, setShowLoadConfirm] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [cloudProgress, setCloudProgress] = useState<CloudProgressRecord | null>(null);
   const [showSyncMenu, setShowSyncMenu] = useState(false);
 
@@ -186,12 +190,19 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
         const cloudRecord = await loadCloudProgressRecord();
         setCloudProgress(cloudRecord);
         lastSyncedStateRef.current = cloudRecord?.progress ? serializeCloudSyncState(normalizeCloudSyncPayload(cloudRecord.progress)) : null;
-        setShowSyncMenu(true);
-        setStatusMessage(
-          cloudRecord?.syncedAt
-            ? `Last synced at: ${new Date(cloudRecord.syncedAt).toLocaleString()}`
-            : 'Last synced at: not synced yet',
-        );
+        if (cloudRecord?.progress) {
+          writeLocalCloudSyncState(cloudRecord.progress);
+          setStatusMessage(
+            cloudRecord?.syncedAt
+              ? `Loaded cloud progress from ${new Date(cloudRecord.syncedAt).toLocaleString()}.`
+              : 'Loaded cloud progress.',
+          );
+          window.location.reload();
+          return;
+        }
+
+        setShowSyncMenu(false);
+        setStatusMessage('No cloud progress found for this account.');
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Could not load cloud progress.';
         setErrorMessage(message);
@@ -263,12 +274,15 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
     if (error) {
       setErrorMessage(error.message);
     } else {
+      clearLocalCloudSyncState();
       setStatusMessage('Signed out.');
       setUsername('');
       setCode('');
       setCloudProgress(null);
       setShowSyncMenu(false);
+      setShowLogoutConfirm(false);
       lastSyncedStateRef.current = null;
+      window.location.reload();
     }
     setIsSubmitting(false);
   };
@@ -322,6 +336,7 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
       setStatusMessage(
         `Loaded cloud progress${cloudProgress?.syncedAt ? ` from ${new Date(cloudProgress.syncedAt).toLocaleString()}` : ''}.`,
       );
+      setShowLoadConfirm(false);
       window.location.reload();
     } catch {
       setErrorMessage('Could not load cloud progress into local storage.');
@@ -340,6 +355,7 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
       setStatusMessage(
         `Cloud progress replaced with current progress${nextRecord.syncedAt ? ` at ${new Date(nextRecord.syncedAt).toLocaleString()}` : ''}.`,
       );
+      setShowSaveConfirm(false);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not replace cloud progress.';
       setErrorMessage(message);
@@ -364,7 +380,12 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
                 <button
                   type="button"
                   className="profile-sync-option"
-                  onClick={handleLoadCloudProgress}
+                  onClick={() => {
+                    setShowLoadConfirm((current) => !current);
+                    setShowSaveConfirm(false);
+                    setErrorMessage('');
+                    setStatusMessage('');
+                  }}
                   disabled={isSubmitting || !hasCloudProgress}
                 >
                   <span className="profile-sync-option-title">Load Game Progress</span>
@@ -377,7 +398,12 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
                 <button
                   type="button"
                   className="profile-sync-option"
-                  onClick={handleReplaceWithCurrentProgress}
+                  onClick={() => {
+                    setShowSaveConfirm((current) => !current);
+                    setShowLoadConfirm(false);
+                    setErrorMessage('');
+                    setStatusMessage('');
+                  }}
                   disabled={isSubmitting}
                 >
                   <span className="profile-sync-option-title">Save Game Progress</span>
@@ -385,6 +411,42 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
                     This replaces your progress on the cloud with your current progress. This action is permanent.
                   </span>
                 </button>
+                {showLoadConfirm && (
+                  <div className="profile-session-card profile-confirm-card">
+                    <div className="settings-section-title">confirm load</div>
+                    <p className="settings-help">
+                      Press load game progress to replace your current local progress with the cloud copy.
+                    </p>
+                    <div className="settings-actions">
+                      <button
+                        type="button"
+                        className="settings-action"
+                        onClick={handleLoadCloudProgress}
+                        disabled={isSubmitting || !hasCloudProgress}
+                      >
+                        {isSubmitting ? 'loading...' : 'load game progress'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {showSaveConfirm && (
+                  <div className="profile-session-card profile-confirm-card">
+                    <div className="settings-section-title">confirm save</div>
+                    <p className="settings-help">
+                      Press save game progress to replace your cloud progress with the current local copy.
+                    </p>
+                    <div className="settings-actions">
+                      <button
+                        type="button"
+                        className="settings-action"
+                        onClick={handleReplaceWithCurrentProgress}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? 'saving...' : 'save game progress'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             <div className="profile-session-card">
@@ -430,6 +492,7 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
                 className="settings-action"
                 onClick={() => {
                   setShowChangePassword((current) => !current);
+                  setShowLogoutConfirm(false);
                   setErrorMessage('');
                   setStatusMessage('');
                 }}
@@ -437,10 +500,31 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
               >
                 {showChangePassword ? 'cancel password change' : 'change password'}
               </button>
-              <button type="button" className="settings-action" onClick={handleSignOut} disabled={isSubmitting}>
-                {isSubmitting ? 'signing out...' : 'sign out'}
+              <button
+                type="button"
+                className="settings-action"
+                onClick={() => {
+                  setShowLogoutConfirm((current) => !current);
+                  setShowChangePassword(false);
+                  setErrorMessage('');
+                  setStatusMessage('');
+                }}
+                disabled={isSubmitting}
+              >
+                {showLogoutConfirm ? 'cancel logout' : 'sign out'}
               </button>
             </div>
+            {showLogoutConfirm && (
+              <div className="profile-session-card profile-confirm-card">
+                <div className="settings-section-title">confirm logout</div>
+                <p className="settings-help">Press log out to sign out of this account on this browser.</p>
+                <div className="settings-actions">
+                  <button type="button" className="settings-action" onClick={handleSignOut} disabled={isSubmitting}>
+                    {isSubmitting ? 'signing out...' : 'log out'}
+                  </button>
+                </div>
+              </div>
+            )}
             {showChangePassword && (
               <form className="profile-form profile-password-form" onSubmit={handleChangePassword}>
                 <label className="settings-label" htmlFor="profileNewCode">

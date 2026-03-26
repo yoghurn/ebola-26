@@ -640,6 +640,10 @@
     background: color-mix(in srgb, var(--bg-color) 88%, white 4%);
 }
 
+.profile-confirm-card {
+    margin-top: 12px;
+}
+
 .profile-session-name {
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Droid Sans Mono', 'Source Code Pro', 'Consolas', 'Courier New', monospace;
     font-size: 18px;

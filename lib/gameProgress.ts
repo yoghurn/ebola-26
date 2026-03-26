@@ -49,6 +49,14 @@ function writeCookie(name: CloudCookieKey, value: string) {
   document.cookie = `${name}=${value}; expires=${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toUTCString()}; path=/`;
 }
 
+function clearCookie(name: CloudCookieKey) {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  document.cookie = `${name}=; expires=${new Date(0).toUTCString()}; path=/`;
+}
+
 function shouldSyncLocalStorageKey(key: string) {
   if (EXCLUDED_LOCAL_STORAGE_KEYS.includes(key as ExcludedLocalStorageKey)) {
     return false;
@@ -214,4 +222,21 @@ export function serializeLocalCloudSyncState() {
 
 export function normalizeCloudSyncPayload(payload: unknown) {
   return normalizeCloudSyncState(payload);
+}
+
+export function clearLocalCloudSyncState() {
+  if (typeof window !== 'undefined') {
+    for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+      const key = window.localStorage.key(index);
+      if (!key || key.startsWith('sb-')) {
+        continue;
+      }
+
+      window.localStorage.removeItem(key);
+    }
+  }
+
+  for (const key of CLOUD_COOKIE_KEYS) {
+    clearCookie(key);
+  }
 }
