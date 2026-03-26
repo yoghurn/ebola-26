@@ -74,6 +74,22 @@
     margin-right: 0;
 }
 
+.topbar .right #profileButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--card-border-color);
+    margin-right: 2px;
+}
+
+.topbar .right #profileButton:hover {
+    color: var(--link-hover-color);
+}
+
+.topbar .right #profileButton.settings-open {
+    color: var(--link-hover-color);
+}
+
 .topbar .right #settingsButton {
     display: inline-flex;
     align-items: center;
@@ -83,7 +99,7 @@
 
 .topbar .right #settingsButton:hover,
 .topbar .right #settingsButton.settings-open {
-    color: var(--card-border-color);
+    color: var(--link-hover-color);
 }
 
 .topbar a:hover,
@@ -402,7 +418,39 @@
     -webkit-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.profile-panel {
+    position: fixed;
+    top: 120px;
+    right: 78px;
+    width: 320px;
+    max-width: calc(100vw - 32px);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border: 2px solid var(--card-border-color);
+    border-radius: 10px;
+    padding: 18px;
+    z-index: 2000;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+    visibility: hidden;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-20px);
+    -webkit-transform: translateY(-20px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    -webkit-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .settings-panel.show {
+    visibility: visible;
+    pointer-events: auto;
+    opacity: 0.98;
+    transform: translateY(0);
+    -webkit-transform: translateY(0);
+    animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    -webkit-animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.profile-panel.show {
     visibility: visible;
     pointer-events: auto;
     opacity: 0.98;
@@ -417,6 +465,12 @@
 }
 
 .settings-panel h3 {
+    margin: 0;
+    font-size: 18px;
+    text-transform: lowercase;
+}
+
+.profile-panel h3 {
     margin: 0;
     font-size: 18px;
     text-transform: lowercase;
@@ -443,7 +497,10 @@
 .settings-section-title,
 .settings-panel label,
 .settings-panel button,
-.settings-panel input {
+.settings-panel input,
+.profile-panel label,
+.profile-panel button,
+.profile-panel input {
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Droid Sans Mono', 'Source Code Pro', 'Consolas', 'Courier New', monospace;
 }
 
@@ -470,7 +527,8 @@
 
 .settings-color-picker,
 .settings-text-input,
-.settings-panel button {
+.settings-panel button,
+.profile-panel button {
     background-color: var(--bg-color);
     color: var(--text-color);
     border: 1px solid var(--card-border-color);
@@ -485,7 +543,8 @@
 }
 
 .settings-text-input,
-.settings-panel button {
+.settings-panel button,
+.profile-panel button {
     width: 100%;
     padding: 10px 12px;
     box-sizing: border-box;
@@ -494,7 +553,9 @@
 
 .settings-text-input:focus,
 .settings-color-picker:focus,
-.settings-panel button:focus {
+.settings-panel button:focus,
+.profile-panel button:focus,
+.profile-panel input:focus {
     outline: none;
     border-color: var(--link-hover-color);
 }
@@ -533,13 +594,47 @@
     gap: 10px;
 }
 
-.settings-panel button:hover {
+.settings-panel button:hover,
+.profile-panel button:hover {
     background-color: var(--card-overlay-color);
     border-color: var(--link-hover-color);
 }
 
+.profile-form {
+    display: grid;
+    gap: 12px;
+}
+
+.profile-session-card {
+    border: 1px solid var(--card-border-color);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 12px;
+    background: color-mix(in srgb, var(--bg-color) 88%, white 4%);
+}
+
+.profile-session-name {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Droid Sans Mono', 'Source Code Pro', 'Consolas', 'Courier New', monospace;
+    font-size: 18px;
+    line-height: 1.4;
+}
+
+.profile-auth-error {
+    margin: 10px 0 0;
+    color: #ff7b7b;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
 @media (max-width: 640px) {
     .settings-panel {
+        top: 102px;
+        right: 12px;
+        left: 12px;
+        width: auto;
+    }
+
+    .profile-panel {
         top: 102px;
         right: 12px;
         left: 12px;

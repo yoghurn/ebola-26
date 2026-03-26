@@ -5,6 +5,7 @@ import Script from "next/script";
 import Topbar from "@/components/Topbar";
 import Bottombar from "@/components/Bottombar";
 import SettingsPanel from "@/components/SettingsPanel";
+import ProfilePanel from "@/components/ProfilePanel";
 import { generatePaletteFromHex } from "@/lib/colorUtils";
 import { updateFaviconWithTheme } from "@/lib/faviconUtils";
 
@@ -13,6 +14,7 @@ const defaultColor = "#FFFFFF";
 export default function ArcadeClient() {
   const [customColor, setCustomColor] = useState(defaultColor);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [showHomeButton, setShowHomeButton] = useState(true);
   const [showFlashGames, setShowFlashGames] = useState(true);
   const [showPortGames, setShowPortGames] = useState(true);
@@ -64,7 +66,23 @@ export default function ArcadeClient() {
   );
 
   const toggleSettings = useCallback(() => {
-    setSettingsOpen((prev) => !prev);
+    setSettingsOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setProfileOpen(false);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleProfile = useCallback(() => {
+    setProfileOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setSettingsOpen(false);
+      }
+      return next;
+    });
   }, []);
 
   useEffect(() => {
@@ -109,11 +127,6 @@ export default function ArcadeClient() {
     applyTheme(customColor);
   }, [applyTheme, customColor]);
 
-  useEffect(() => {
-    const settingsButton = document.getElementById("settingsButton");
-    settingsButton?.classList.toggle("settings-open", settingsOpen);
-  }, [settingsOpen]);
-
   const exportProgress = useCallback(() => {
     const allStorage: Record<string, string> = {};
     for (let i = 0; i < localStorage.length; i++) {
@@ -154,7 +167,13 @@ export default function ArcadeClient() {
       <Script src="/js/themes.js" strategy="beforeInteractive" />
 
       {/* Now Topbar receives required props */}
-      <Topbar color={customColor} onSettingsClick={toggleSettings} />
+      <Topbar 
+        color={customColor} 
+        onSettingsClick={toggleSettings}
+        isSettingsOpen={settingsOpen}
+        onProfileClick={toggleProfile}
+        isProfileOpen={profileOpen}
+      />
 
       <div className="main-content">
         {/* ... unchanged ... */}
@@ -189,6 +208,7 @@ export default function ArcadeClient() {
           setCookie("showEmulatorGames", String(nextValue), 30);
         }}
       />
+      <ProfilePanel isOpen={profileOpen} />
     </>
   );
 }

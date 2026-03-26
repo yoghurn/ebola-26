@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Topbar from '../../components/Topbar';
 import SettingsPanel from '../../components/SettingsPanel';
+import ProfilePanel from '../../components/ProfilePanel';
 import Bottombar from '../../components/Bottombar';
 import { generatePaletteFromHex, type ColorPalette } from '../../lib/colorUtils';
 import { useOnlineCount } from '../../lib/useOnlineCount';
@@ -26,6 +27,7 @@ export default function ArcadePage() {
   const [customColor, setCustomColor] = useState<string>('#FFFFFF');
   const [colorPalette, setColorPalette] = useState<ColorPalette>(generatePaletteFromHex('#FFFFFF'));
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showHomeButton, setShowHomeButton] = useState(true);
   const [showFlashGames, setShowFlashGames] = useState(true);
@@ -406,7 +408,16 @@ export default function ArcadePage() {
       {/* Topbar */}
       <Topbar
         color={customColor}
-        onSettingsClick={() => setSettingsOpen(!settingsOpen)}
+        onSettingsClick={() => {
+          setSettingsOpen(!settingsOpen);
+          setProfileOpen(false);
+        }}
+        isSettingsOpen={settingsOpen}
+        onProfileClick={() => {
+          setProfileOpen(!profileOpen);
+          setSettingsOpen(false);
+        }}
+        isProfileOpen={profileOpen}
         onlineCount={onlineCount}
         searchQuery={searchQuery}
         onSearchChange={(value) => {
@@ -507,6 +518,7 @@ export default function ArcadePage() {
           setCookie('showEmulatorGames', String(nextValue));
         }}
       />
+      <ProfilePanel isOpen={profileOpen} />
 
       {/* Bottombar */}
       <Bottombar />

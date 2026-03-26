@@ -5,6 +5,9 @@ import { useEffect, useRef, type MouseEvent } from 'react';
 interface TopbarProps {
   color: string;
   onSettingsClick: () => void;
+  onProfileClick?: () => void;
+  isSettingsOpen?: boolean;
+  isProfileOpen?: boolean;
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
   onlineCount?: number | null;
@@ -12,7 +15,7 @@ interface TopbarProps {
   onThemeHintDismiss?: () => void;
 }
 
-export default function Topbar({ color, onSettingsClick, searchQuery, onSearchChange, onlineCount, showThemeHint, onThemeHintDismiss }: TopbarProps) {
+export default function Topbar({ color, onSettingsClick, onProfileClick, isSettingsOpen, isProfileOpen, searchQuery, onSearchChange, onlineCount, showThemeHint, onThemeHintDismiss }: TopbarProps) {
   const logoRef = useRef<HTMLAnchorElement>(null);
 
   const scrollToTop = (event: MouseEvent<HTMLAnchorElement>) => {
@@ -82,10 +85,33 @@ export default function Topbar({ color, onSettingsClick, searchQuery, onSearchCh
             onChange={(e) => onSearchChange(e.target.value)}
           />
         )}
+        {onProfileClick && (
+          <a
+            id="profileButton"
+            aria-label="Open profile"
+            onClick={onProfileClick}
+            className={isProfileOpen ? 'settings-open' : undefined}
+            style={{ cursor: 'pointer' }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              width="26"
+              height="26"
+              aria-hidden="true"
+            >
+              <path
+                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                fill="currentColor"
+              />
+            </svg>
+          </a>
+        )}
         <a
           id="settingsButton"
           aria-label="Open settings"
           onClick={onSettingsClick}
+          className={isSettingsOpen ? 'settings-open' : undefined}
           style={{ cursor: 'pointer' }}
         >
           <svg
