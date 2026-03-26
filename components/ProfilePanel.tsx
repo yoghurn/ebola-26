@@ -145,55 +145,6 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
     return nextRecord;
   };
 
-  useEffect(() => {
-    if (!session) {
-      lastSyncedStateRef.current = null;
-      return;
-    }
-
-    const syncIfChanged = async () => {
-      const currentState = serializeLocalCloudSyncState();
-      if (currentState === lastSyncedStateRef.current) {
-        return;
-      }
-
-      try {
-        const nextRecord = await replaceCloudWithCurrentProgress();
-        setStatusMessage(
-          nextRecord.syncedAt
-            ? `Last synced at: ${new Date(nextRecord.syncedAt).toLocaleString()}`
-            : 'Last synced at: not synced yet',
-        );
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Could not sync current progress.';
-        setErrorMessage(message);
-      }
-    };
-
-    const intervalId = window.setInterval(() => {
-      void syncIfChanged();
-    }, 30000);
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        void syncIfChanged();
-      }
-    };
-
-    const handleBeforeUnload = () => {
-      void syncIfChanged();
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [session]);
-
   const resetFeedback = () => {
     setErrorMessage('');
     setStatusMessage('Use your username and code to sign in or create an account.');
@@ -427,9 +378,9 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
                   onClick={handleReplaceWithCurrentProgress}
                   disabled={isSubmitting}
                 >
-                  <span className="profile-sync-option-title">Replace with Current Progress</span>
+                  <span className="profile-sync-option-title">Save Game Progress</span>
                   <span className="profile-sync-option-description">
-                    Continue with the game progress you had right now before logging in, this will replace the progress you have saved on the cloud.
+                    Save your current local progress to the cloud. This replaces the progress currently saved on the cloud.
                   </span>
                 </button>
               </div>
