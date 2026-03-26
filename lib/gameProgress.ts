@@ -8,11 +8,14 @@ const CLOUD_COOKIE_KEYS = [
   'showPortGames',
   'showEmulatorGames',
 ] as const;
+const EXCLUDED_LOCAL_STORAGE_KEYS = ['lastOpenedAt'] as const;
 
 type CloudCookieKey = (typeof CLOUD_COOKIE_KEYS)[number];
+type ExcludedLocalStorageKey = (typeof EXCLUDED_LOCAL_STORAGE_KEYS)[number];
 
 export interface CloudSyncState {
   gameProgress: string;
+  localStorage: Record<string, string>;
   cookies: Partial<Record<CloudCookieKey, string>>;
 }
 
@@ -46,17 +49,30 @@ function writeCookie(name: CloudCookieKey, value: string) {
   document.cookie = `${name}=${value}; expires=${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toUTCString()}; path=/`;
 }
 
+function shouldSyncLocalStorageKey(key: string) {
+  if (EXCLUDED_LOCAL_STORAGE_KEYS.includes(key as ExcludedLocalStorageKey)) {
+    return false;
+  }
+
+  if (key.startsWith('sb-')) {
+    return false;
+  }
+
+  return true;
+}
+
 function normalizeCloudSyncState(state: unknown): CloudSyncState {
   if (!state || typeof state !== 'object' || Array.isArray(state)) {
     return {
       gameProgress: '{}',
+      localStorage: {},
       cookies: {},
     };
   }
 
-  const candidate = state as { gameProgress?: unknown; cookies?: unknown };
+  const candidate = state as { gameProgress?: unknown; localStorage?: unknown; cookies?: unknown };
 
-  if ('gameProgress' in candidate || 'cookies' in candidate) {
+  if ('gameProgress' in candidate || 'localStorage' in candidate || 'cookies' in candidate) {
     const cookies =
       candidate.cookies && typeof candidate.cookies === 'object' && !Array.isArray(candidate.cookies)
         ? Object.fromEntries(
@@ -65,17 +81,29 @@ function normalizeCloudSyncState(state: unknown): CloudSyncState {
             ),
           )
         : {};
+    const localStorage =
+      candidate.localStorage && typeof candidate.localStorage === 'object' && !Array.isArray(candidate.localStorage)
+        ? Object.fromEntries(
+            Object.entries(candidate.localStorage).filter(
+              ([key, value]) => shouldSyncLocalStorageKey(key) && typeof value === 'string',
+            ),
+          )
+        : {};
 
     return {
       gameProgress: normalizeProgressValue(
         typeof candidate.gameProgress === 'string' ? candidate.gameProgress : JSON.stringify(candidate.gameProgress ?? {}),
       ),
+      localStorage,
       cookies,
     };
   }
 
   return {
     gameProgress: normalizeProgressValue(JSON.stringify(state)),
+    localStorage: {
+      [GAME_PROGRESS_KEY]: normalizeProgressValue(JSON.stringify(state)),
+    },
     cookies: {},
   };
 }
@@ -108,6 +136,21 @@ export function ensureLocalGameProgress() {
 
 export function readLocalCloudSyncState() {
   const cookies: Partial<Record<CloudCookieKey, string>> = {};
+  const localStorageSnapshot: Record<string, string> = {};
+
+  if (typeof window !== 'undefined') {
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index);
+      if (!key || !shouldSyncLocalStorageKey(key)) {
+        continue;
+      }
+
+      const value = window.localStorage.getItem(key);
+      if (value !== null) {
+        localStorageSnapshot[key] = key === GAME_PROGRESS_KEY ? normalizeProgressValue(value) : value;
+      }
+    }
+  }
 
   if (typeof document !== 'undefined') {
     for (const key of CLOUD_COOKIE_KEYS) {
@@ -120,12 +163,36 @@ export function readLocalCloudSyncState() {
 
   return {
     gameProgress: readLocalGameProgress(),
+    localStorage: {
+      ...localStorageSnapshot,
+      [GAME_PROGRESS_KEY]: readLocalGameProgress(),
+    },
     cookies,
   } satisfies CloudSyncState;
 }
 
 export function writeLocalCloudSyncState(state: unknown) {
   const normalizedState = normalizeCloudSyncState(state);
+
+  if (typeof window !== 'undefined') {
+    const syncedKeys = new Set(Object.keys(normalizedState.localStorage));
+
+    for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+      const key = window.localStorage.key(index);
+      if (!key || !shouldSyncLocalStorageKey(key)) {
+        continue;
+      }
+
+      if (!syncedKeys.has(key)) {
+        window.localStorage.removeItem(key);
+      }
+    }
+
+    for (const [key, value] of Object.entries(normalizedState.localStorage)) {
+      window.localStorage.setItem(key, key === GAME_PROGRESS_KEY ? normalizeProgressValue(value) : value);
+    }
+  }
+
   writeLocalGameProgress(normalizedState.gameProgress);
 
   for (const [key, value] of Object.entries(normalizedState.cookies)) {
@@ -136,6 +203,7 @@ export function writeLocalCloudSyncState(state: unknown) {
 export function serializeCloudSyncState(state: CloudSyncState) {
   return JSON.stringify({
     gameProgress: JSON.parse(normalizeProgressValue(state.gameProgress)),
+    localStorage: state.localStorage,
     cookies: state.cookies,
   });
 }
