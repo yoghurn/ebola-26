@@ -3,6 +3,19 @@ import { getSupabaseAdminClient, getSupabaseUserClient } from '@/lib/supabaseSer
 
 const TABLE_NAME = 'user_game_progress';
 
+function toProgressErrorResponse(errorMessage: string) {
+  if (errorMessage.includes(`Could not find the table 'public.${TABLE_NAME}'`)) {
+    return NextResponse.json(
+      {
+        error: `Supabase table public.${TABLE_NAME} is missing. Run supabase/game_progress.sql in your Supabase SQL editor, then try again.`,
+      },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({ error: errorMessage }, { status: 500 });
+}
+
 async function getAuthenticatedUser(request: Request) {
   const authHeader = request.headers.get('authorization');
   const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -41,7 +54,7 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return toProgressErrorResponse(error.message);
     }
 
     return NextResponse.json({
@@ -87,7 +100,7 @@ export async function PUT(request: Request) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return toProgressErrorResponse(error.message);
     }
 
     return NextResponse.json({ syncedAt: data.synced_at });

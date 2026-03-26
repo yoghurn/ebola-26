@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser';
 import { ensureLocalGameProgress, readLocalGameProgress, writeLocalGameProgress } from '../lib/gameProgress';
@@ -22,6 +22,7 @@ interface CloudProgressRecord {
 
 export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+  const lastSyncedProgressRef = useRef<string | null>(null);
   const [username, setUsername] = useState('');
   const [code, setCode] = useState('');
   const [newCode, setNewCode] = useState('');
@@ -104,6 +105,7 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
   };
 
   const replaceCloudWithCurrentProgress = async () => {
+    const localProgress = readLocalGameProgress();
     const accessToken = await getAccessToken();
     if (!accessToken) {
       throw new Error('Missing session token.');
@@ -116,7 +118,7 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
-        progress: readLocalGameProgress(),
+        progress: localProgress,
       }),
     });
 
@@ -126,13 +128,63 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
     }
 
     const nextRecord = {
-      progress: JSON.parse(readLocalGameProgress()),
+      progress: JSON.parse(localProgress),
       syncedAt: payload?.syncedAt ?? null,
     } satisfies CloudProgressRecord;
 
+    lastSyncedProgressRef.current = localProgress;
     setCloudProgress(nextRecord);
     return nextRecord;
   };
+
+  useEffect(() => {
+    if (!session) {
+      lastSyncedProgressRef.current = null;
+      return;
+    }
+
+    const syncIfChanged = async () => {
+      const currentProgress = readLocalGameProgress();
+      if (currentProgress === lastSyncedProgressRef.current) {
+        return;
+      }
+
+      try {
+        const nextRecord = await replaceCloudWithCurrentProgress();
+        setStatusMessage(
+          nextRecord.syncedAt
+            ? `Last synced at: ${new Date(nextRecord.syncedAt).toLocaleString()}`
+            : 'Last synced at: not synced yet',
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Could not sync current progress.';
+        setErrorMessage(message);
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      void syncIfChanged();
+    }, 30000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        void syncIfChanged();
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      void syncIfChanged();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [session]);
 
   const resetFeedback = () => {
     setErrorMessage('');
@@ -174,6 +226,7 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
       try {
         const cloudRecord = await loadCloudProgressRecord();
         setCloudProgress(cloudRecord);
+        lastSyncedProgressRef.current = cloudRecord?.progress ? JSON.stringify(cloudRecord.progress) : null;
         setShowSyncMenu(true);
         setStatusMessage(
           cloudRecord?.syncedAt
@@ -256,6 +309,7 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
       setCode('');
       setCloudProgress(null);
       setShowSyncMenu(false);
+      lastSyncedProgressRef.current = null;
     }
     setIsSubmitting(false);
   };
@@ -302,6 +356,7 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
 
     try {
       writeLocalGameProgress(JSON.stringify(cloudProgress?.progress ?? {}));
+      lastSyncedProgressRef.current = readLocalGameProgress();
       setShowSyncMenu(false);
       setStatusMessage(
         `Loaded cloud progress${cloudProgress?.syncedAt ? ` from ${new Date(cloudProgress.syncedAt).toLocaleString()}` : ''}.`,
@@ -387,6 +442,7 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
                   try {
                     const cloudRecord = await loadCloudProgressRecord();
                     setCloudProgress(cloudRecord);
+                    lastSyncedProgressRef.current = cloudRecord?.progress ? JSON.stringify(cloudRecord.progress) : null;
                     setShowSyncMenu(true);
                     setStatusMessage(
                       cloudRecord?.syncedAt
