@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import Topbar from '../../components/Topbar';
 import SettingsPanel from '../../components/SettingsPanel';
 import ProfilePanel from '../../components/ProfilePanel';
@@ -8,6 +9,8 @@ import Bottombar from '../../components/Bottombar';
 import { generatePaletteFromHex, type ColorPalette } from '../../lib/colorUtils';
 import { useOnlineCount } from '../../lib/useOnlineCount';
 import { updateFaviconWithTheme } from '../../lib/faviconUtils';
+import { getSupabaseBrowserClient } from '../../lib/supabaseBrowser';
+import { readLocalCloudSyncState, serializeCloudSyncState } from '../../lib/gameProgress';
 
 interface Game {
   gameID: number;
@@ -28,6 +31,10 @@ export default function ArcadePage() {
   const [colorPalette, setColorPalette] = useState<ColorPalette>(generatePaletteFromHex('#FFFFFF'));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [isSavingProgress, setIsSavingProgress] = useState(false);
+  const [saveProgressMessage, setSaveProgressMessage] = useState('');
+  const [session, setSession] = useState<Session | null>(null);
+  const [authGateMessage, setAuthGateMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showHomeButton, setShowHomeButton] = useState(true);
   const [showFlashGames, setShowFlashGames] = useState(true);
@@ -191,6 +198,88 @@ export default function ArcadePage() {
     };
     reader.readAsText(file);
   };
+
+  const saveProgressToCloud = async () => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setSaveProgressMessage('supabase is not configured');
+      return;
+    }
+
+    setIsSavingProgress(true);
+    setSaveProgressMessage('');
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        setSaveProgressMessage('sign in to save progress');
+        return;
+      }
+
+      const response = await fetch('/api/progress', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          progress: serializeCloudSyncState(readLocalCloudSyncState()),
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as { syncedAt?: string; error?: string } | null;
+      if (!response.ok) {
+        throw new Error(payload?.error || 'could not save progress');
+      }
+
+      setSaveProgressMessage(
+        payload?.syncedAt ? `saved ${new Date(payload.syncedAt).toLocaleString()}` : 'progress saved',
+      );
+    } catch (error) {
+      setSaveProgressMessage(error instanceof Error ? error.message : 'could not save progress');
+    } finally {
+      setIsSavingProgress(false);
+    }
+  };
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      return;
+    }
+
+    let active = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      setSession(data.session ?? null);
+      if (!data.session) {
+        setProfileOpen(true);
+        setSettingsOpen(false);
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!active) return;
+      setSession(nextSession);
+      if (nextSession) {
+        setAuthGateMessage('');
+      } else {
+        setProfileOpen(true);
+        setSettingsOpen(false);
+      }
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Initialize theme immediately
   useEffect(() => {
@@ -409,11 +498,21 @@ export default function ArcadePage() {
       <Topbar
         color={customColor}
         onSettingsClick={() => {
+          if (!session) {
+            setProfileOpen(true);
+            setAuthGateMessage('you must have an account to use this site');
+            return;
+          }
           setSettingsOpen(!settingsOpen);
           setProfileOpen(false);
         }}
         isSettingsOpen={settingsOpen}
         onProfileClick={() => {
+          if (!session) {
+            setProfileOpen(true);
+            setAuthGateMessage('');
+            return;
+          }
           setProfileOpen(!profileOpen);
           setSettingsOpen(false);
         }}
@@ -519,6 +618,89 @@ export default function ArcadePage() {
         }}
       />
       <ProfilePanel isOpen={profileOpen} />
+
+      {!session && (
+        <div
+          onClick={() => {
+            setProfileOpen(true);
+            setSettingsOpen(false);
+            setAuthGateMessage('you must have an account to use this site');
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1900,
+            background: 'transparent',
+          }}
+        />
+      )}
+
+      {authGateMessage && !session && (
+        <div
+          style={{
+            position: 'fixed',
+            right: '20px',
+            bottom: '76px',
+            zIndex: 1960,
+            maxWidth: '260px',
+            padding: '8px 10px',
+            borderRadius: '8px',
+            border: '1px solid var(--card-border-color)',
+            background: 'color-mix(in srgb, var(--bg-color) 88%, white 4%)',
+            color: 'var(--text-color)',
+            fontSize: '12px',
+            lineHeight: 1.4,
+          }}
+        >
+          {authGateMessage}
+        </div>
+      )}
+
+      <div
+        style={{
+          position: 'fixed',
+          right: '20px',
+          bottom: '76px',
+          zIndex: 960,
+          display: 'grid',
+          gap: '8px',
+          justifyItems: 'end',
+        }}
+      >
+        {saveProgressMessage && (
+          <div
+            style={{
+              maxWidth: '260px',
+              padding: '8px 10px',
+              borderRadius: '8px',
+              border: '1px solid var(--card-border-color)',
+              background: 'color-mix(in srgb, var(--bg-color) 88%, white 4%)',
+              color: 'var(--text-color)',
+              fontSize: '12px',
+              lineHeight: 1.4,
+            }}
+          >
+            {saveProgressMessage}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={saveProgressToCloud}
+          disabled={isSavingProgress}
+          style={{
+            padding: '10px 14px',
+            borderRadius: '8px',
+            border: '1px solid var(--card-border-color)',
+            backgroundColor: 'var(--bg-color)',
+            color: 'var(--text-color)',
+            cursor: isSavingProgress ? 'default' : 'pointer',
+            fontFamily: "'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Droid Sans Mono', 'Source Code Pro', 'Consolas', 'Courier New', monospace",
+            fontSize: '13px',
+          }}
+        >
+          {isSavingProgress ? 'saving...' : 'save progress'}
+        </button>
+      </div>
 
       {/* Bottombar */}
       <Bottombar />

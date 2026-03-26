@@ -322,6 +322,7 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
       setStatusMessage(
         `Loaded cloud progress${cloudProgress?.syncedAt ? ` from ${new Date(cloudProgress.syncedAt).toLocaleString()}` : ''}.`,
       );
+      window.location.reload();
     } catch {
       setErrorMessage('Could not load cloud progress into local storage.');
     }
@@ -348,12 +349,13 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
   };
 
   return (
-    <div className={`profile-panel ${isOpen ? 'show' : ''}`}>
-      <div className="settings-header">
-        <h3>profile</h3>
-      </div>
+    <>
+      <div className={`profile-panel ${isOpen ? 'show' : ''}`}>
+        <div className="settings-header">
+          <h3>profile</h3>
+        </div>
 
-      <section className="settings-section">
+        <section className="settings-section">
         {session ? (
           <>
             {showSyncMenu && (
@@ -368,8 +370,8 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
                   <span className="profile-sync-option-title">Load Game Progress</span>
                   <span className="profile-sync-option-description">
                     {hasCloudProgress
-                      ? `Load your progress from the cloud if you lost your data. Last synced at: ${lastSyncedLabel}`
-                      : 'Load your progress from the cloud if you lost your data. No cloud progress is saved yet.'}
+                      ? `This will replace your current progress with the progress you saved on the cloud. Last synced at: ${lastSyncedLabel}`
+                      : 'This will replace your current progress with the progress you saved on the cloud. No cloud progress is saved yet.'}
                   </span>
                 </button>
                 <button
@@ -380,7 +382,7 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
                 >
                   <span className="profile-sync-option-title">Save Game Progress</span>
                   <span className="profile-sync-option-description">
-                    Save your current local progress to the cloud. This replaces the progress currently saved on the cloud.
+                    This replaces your progress on the cloud with your current progress. This action is permanent.
                   </span>
                 </button>
               </div>
@@ -468,51 +470,52 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
           </>
         ) : (
           <form className="profile-form" onSubmit={handleSubmit}>
-            <label className="settings-label" htmlFor="profileHandle">
-              username
-              <input
-                id="profileHandle"
-                type="text"
-                className="settings-text-input"
-                placeholder="enter your username"
-                autoComplete="username"
-                value={username}
-                onChange={(event) => {
-                  setUsername(event.target.value);
-                  resetFeedback();
-                }}
-                disabled={isSubmitting}
-              />
-            </label>
+              <label className="settings-label" htmlFor="profileHandle">
+                username
+                <input
+                  id="profileHandle"
+                  type="text"
+                  className="settings-text-input"
+                  placeholder="enter your username"
+                  autoComplete="username"
+                  value={username}
+                  onChange={(event) => {
+                    setUsername(event.target.value);
+                    resetFeedback();
+                  }}
+                  disabled={isSubmitting}
+                />
+              </label>
 
-            <label className="settings-label" htmlFor="profileCode">
-              code
-              <input
-                id="profileCode"
-                type="password"
-                className="settings-text-input"
-                placeholder="enter your code"
-                autoComplete="current-password"
-                value={code}
-                onChange={(event) => {
-                  setCode(event.target.value);
-                  resetFeedback();
-                }}
-                disabled={isSubmitting}
-              />
-            </label>
+              <label className="settings-label" htmlFor="profileCode">
+                code
+                <input
+                  id="profileCode"
+                  type="password"
+                  className="settings-text-input"
+                  placeholder="enter your code"
+                  autoComplete="current-password"
+                  value={code}
+                  onChange={(event) => {
+                    setCode(event.target.value);
+                    resetFeedback();
+                  }}
+                  disabled={isSubmitting}
+                />
+              </label>
 
-            <div className="settings-actions">
-              <button type="submit" className="settings-action" disabled={isSubmitting}>
-                {isSubmitting ? 'working...' : 'continue'}
-              </button>
-            </div>
-          </form>
+              <div className="settings-actions">
+                <button type="submit" className="settings-action" disabled={isSubmitting}>
+                  {isSubmitting ? 'working...' : 'continue'}
+                </button>
+              </div>
+            </form>
         )}
 
         <p className="settings-help">{statusMessage}</p>
         {errorMessage && <p className="profile-auth-error">{errorMessage}</p>}
-      </section>
-    </div>
+        </section>
+      </div>
+    </>
   );
 }
