@@ -6,6 +6,7 @@ import SettingsPanel from '../../components/SettingsPanel';
 import Bottombar from '../../components/Bottombar';
 import { generatePaletteFromHex, type ColorPalette } from '../../lib/colorUtils';
 import { useOnlineCount } from '../../lib/useOnlineCount';
+import { updateFaviconWithTheme } from '../../lib/faviconUtils';
 
 interface Game {
   gameID: number;
@@ -27,12 +28,12 @@ export default function ArcadePage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showHomeButton, setShowHomeButton] = useState(true);
-  const [hideFlashGames, setHideFlashGames] = useState(true);
-  const [hidePortGames, setHidePortGames] = useState(false);
-  const [hideEmulatorGames, setHideEmulatorGames] = useState(false);
+  const [showFlashGames, setShowFlashGames] = useState(true);
+  const [showPortGames, setShowPortGames] = useState(false);
+  const [showEmulatorGames, setShowEmulatorGames] = useState(false);
   const [isThemeLoaded, setIsThemeLoaded] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
-  const [hideSplash, setHideSplash] = useState(false);
+  const [splashFading, setSplashFading] = useState(false);
   const [splashLogoMarkup, setSplashLogoMarkup] = useState('');
   const onlineCount = useOnlineCount();
 
@@ -126,9 +127,9 @@ export default function ArcadePage() {
     const normalizedQuery = query.trim().toLowerCase();
     let gamesToDisplay = allGames.filter((g) => {
       if (g.special?.includes('fnf')) return false;
-      if (hideFlashGames && g.special?.includes('flash')) return false;
-      if (hidePortGames && g.special?.includes('port')) return false;
-      if (hideEmulatorGames && g.special?.includes('emulator')) return false;
+      if (showFlashGames && g.special?.includes('flash')) return false;
+      if (showPortGames && g.special?.includes('port')) return false;
+      if (showEmulatorGames && g.special?.includes('emulator')) return false;
       return true;
     });
     if (normalizedQuery) {
@@ -156,6 +157,7 @@ export default function ArcadePage() {
     setCustomColor(hexColor);
     setColorPalette(palette);
     setIsThemeLoaded(true);
+    updateFaviconWithTheme(palette.bg, palette.text);
   };
 
   const exportProgress = () => {
@@ -201,11 +203,11 @@ export default function ArcadePage() {
       const shouldShowSplash = !lastOpenedAt || now - lastOpenedAt >= SPLASH_THRESHOLD_MS;
 
       setShowSplash(shouldShowSplash);
-      setHideSplash(false);
+      setSplashFading(false);
       localStorage.setItem('lastOpenedAt', String(now));
     } catch {
       setShowSplash(true);
-      setHideSplash(false);
+      setSplashFading(false);
     }
   }, []);
 
@@ -237,7 +239,7 @@ export default function ArcadePage() {
   useEffect(() => {
     if (!showSplash || !isThemeLoaded) return;
 
-    const fadeTimer = window.setTimeout(() => setHideSplash(true), 1400);
+    const fadeTimer = window.setTimeout(() => setSplashFading(true), 1400);
     const removeTimer = window.setTimeout(() => setShowSplash(false), 1950);
 
     return () => {
@@ -248,7 +250,7 @@ export default function ArcadePage() {
 
   useEffect(() => {
     updateGamesDisplay(searchQuery);
-  }, [allGames, hideFlashGames, hidePortGames, hideEmulatorGames]);
+  }, [allGames, showFlashGames, showPortGames, showEmulatorGames]);
 
   // Initialize other settings
   useEffect(() => {
@@ -260,28 +262,28 @@ export default function ArcadePage() {
       setShowHomeButton(savedShowHomeButton !== 'false');
     }
 
-    const savedHideFlashGames = getCookie('hideFlashGames');
-    if (savedHideFlashGames === null) {
-      setCookie('hideFlashGames', 'true');
-      setHideFlashGames(true);
+    const savedShowFlashGames = getCookie('showFlashGames');
+    if (savedShowFlashGames === null) {
+      setCookie('showFlashGames', 'true');
+      setShowFlashGames(true);
     } else {
-      setHideFlashGames(savedHideFlashGames !== 'false');
+      setShowFlashGames(savedShowFlashGames !== 'false');
     }
 
-    const savedHidePortGames = getCookie('hidePortGames');
-    if (savedHidePortGames === null) {
-      setCookie('hidePortGames', 'false');
-      setHidePortGames(false);
+    const savedShowPortGames = getCookie('showPortGames');
+    if (savedShowPortGames === null) {
+      setCookie('showPortGames', 'false');
+      setShowPortGames(false);
     } else {
-      setHidePortGames(savedHidePortGames === 'true');
+      setShowPortGames(savedShowPortGames === 'true');
     }
 
-    const savedHideEmulatorGames = getCookie('hideEmulatorGames');
-    if (savedHideEmulatorGames === null) {
-      setCookie('hideEmulatorGames', 'false');
-      setHideEmulatorGames(false);
+    const savedShowEmulatorGames = getCookie('showEmulatorGames');
+    if (savedShowEmulatorGames === null) {
+      setCookie('showEmulatorGames', 'false');
+      setShowEmulatorGames(false);
     } else {
-      setHideEmulatorGames(savedHideEmulatorGames === 'true');
+      setShowEmulatorGames(savedShowEmulatorGames === 'true');
     }
 
     // Load games, blacklist, and forced includes
@@ -389,7 +391,7 @@ export default function ArcadePage() {
           zIndex: 9999
         }}>
           {showSplash && (
-            <div className={`startup-splash ${hideSplash ? 'fade-out' : ''}`}>
+            <div className={`startup-splash ${splashFading ? 'fade-out' : ''}`}>
               <div className="startup-splash-glow" />
               <div
                 className="startup-splash-logo"
@@ -489,20 +491,20 @@ export default function ArcadePage() {
           setShowHomeButton(nextValue);
           setCookie('showHomeButton', String(nextValue));
         }}
-        hideFlashGames={hideFlashGames}
-        onHideFlashGamesToggle={(nextValue) => {
-          setHideFlashGames(nextValue);
-          setCookie('hideFlashGames', String(nextValue));
+        showFlashGames={showFlashGames}
+        onShowFlashGamesToggle={(nextValue) => {
+          setShowFlashGames(nextValue);
+          setCookie('showFlashGames', String(nextValue));
         }}
-        hidePortGames={hidePortGames}
-        onHidePortGamesToggle={(nextValue) => {
-          setHidePortGames(nextValue);
-          setCookie('hidePortGames', String(nextValue));
+        showPortGames={showPortGames}
+        onShowPortGamesToggle={(nextValue) => {
+          setShowPortGames(nextValue);
+          setCookie('showPortGames', String(nextValue));
         }}
-        hideEmulatorGames={hideEmulatorGames}
-        onHideEmulatorGamesToggle={(nextValue) => {
-          setHideEmulatorGames(nextValue);
-          setCookie('hideEmulatorGames', String(nextValue));
+        showEmulatorGames={showEmulatorGames}
+        onShowEmulatorGamesToggle={(nextValue) => {
+          setShowEmulatorGames(nextValue);
+          setCookie('showEmulatorGames', String(nextValue));
         }}
       />
 

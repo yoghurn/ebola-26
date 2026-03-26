@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { generatePaletteFromHex, type ColorPalette } from '../../../lib/colorUtils';
 import { useOnlineCount } from '../../../lib/useOnlineCount';
+import { updateFaviconWithTheme } from '../../../lib/faviconUtils';
 
 export default function GamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
@@ -22,7 +23,9 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
     const colorCookie = document.cookie.split('; ').find(row => row.startsWith('customColor='));
     const color = colorCookie ? colorCookie.split('=')[1] : '#FFFFFF';
     setCustomColor(color);
-    setColorPalette(generatePaletteFromHex(color));
+    const palette = generatePaletteFromHex(color);
+    setColorPalette(palette);
+    updateFaviconWithTheme(palette.bg, palette.text);
     
     const showHomeCookie = document.cookie.split('; ').find(row => row.startsWith('showHomeButton='));
     if (showHomeCookie) {
@@ -60,6 +63,18 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
         const sidebarAd2 = doc.getElementById('sidebarad2');
         if (sidebarAd1) sidebarAd1.remove();
         if (sidebarAd2) sidebarAd2.remove();
+        
+        // Inject script to disable popups at the beginning of head
+        const disablePopupsScript = doc.createElement('script');
+        disablePopupsScript.textContent = `
+          window.alert = function() {};
+          window.confirm = function() { return true; };
+          window.prompt = function() { return null; };
+        `;
+        const head = doc.querySelector('head');
+        if (head) {
+          head.insertBefore(disablePopupsScript, head.firstChild);
+        }
         
         // Serialize back to HTML string
         const modifiedHtml = new XMLSerializer().serializeToString(doc);

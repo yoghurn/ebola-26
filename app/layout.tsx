@@ -6,9 +6,9 @@ import "../public/css/components.css";
 import "../public/css/themes.css";
 
 export const metadata: Metadata = {
-  title: "ebola arcade",
+  title: "ebola",
   icons: {
-    icon: "/assets/favicon.png",
+    icon: "/assets/flaticon.svg",
   },
 };
 

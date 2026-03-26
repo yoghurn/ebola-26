@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type MouseEvent } from 'react';
 
 interface TopbarProps {
   color: string;
@@ -8,10 +8,17 @@ interface TopbarProps {
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
   onlineCount?: number | null;
+  showThemeHint?: boolean;
+  onThemeHintDismiss?: () => void;
 }
 
-export default function Topbar({ color, onSettingsClick, searchQuery, onSearchChange, onlineCount }: TopbarProps) {
+export default function Topbar({ color, onSettingsClick, searchQuery, onSearchChange, onlineCount, showThemeHint, onThemeHintDismiss }: TopbarProps) {
   const logoRef = useRef<HTMLAnchorElement>(null);
+
+  const scrollToTop = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     const loadLogo = async () => {
@@ -34,10 +41,11 @@ export default function Topbar({ color, onSettingsClick, searchQuery, onSearchCh
     <div className="topbar">
       <div className="left">
         <a
-          href="/arcade/"
+          href="#top"
           className="logo"
-          aria-label="Arcade home"
+          aria-label="Scroll to top"
           ref={logoRef}
+          onClick={scrollToTop}
           style={{
             width: '156px',
             height: '72px',
@@ -46,9 +54,22 @@ export default function Topbar({ color, onSettingsClick, searchQuery, onSearchCh
           }}
         />
         {onlineCount !== undefined && (
-          <span className="topbar-online-count">
-            {onlineCount === null ? 'players offline' : `${onlineCount} players online`}
-          </span>
+          <div className="topbar-online-count">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              style={{ marginRight: '6px', verticalAlign: 'middle' }}
+            >
+              <path
+                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                fill="currentColor"
+              />
+            </svg>
+            {onlineCount === null ? 'players offline' : `${onlineCount} ${onlineCount === 1 ? 'player' : 'players'} online`}
+          </div>
         )}
       </div>
       <div className="right">
@@ -80,6 +101,16 @@ export default function Topbar({ color, onSettingsClick, searchQuery, onSearchCh
             />
           </svg>
         </a>
+        {showThemeHint && (
+          <div className="theme-hint-popup">
+            <p>You can change the color of your theme in settings!</p>
+            {onThemeHintDismiss && (
+              <button type="button" className="theme-hint-dismiss" onClick={onThemeHintDismiss}>
+                dismiss
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

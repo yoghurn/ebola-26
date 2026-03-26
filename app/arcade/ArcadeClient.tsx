@@ -6,6 +6,7 @@ import Topbar from "@/components/Topbar";
 import Bottombar from "@/components/Bottombar";
 import SettingsPanel from "@/components/SettingsPanel";
 import { generatePaletteFromHex } from "@/lib/colorUtils";
+import { updateFaviconWithTheme } from "@/lib/faviconUtils";
 
 const defaultColor = "#FFFFFF";
 
@@ -13,9 +14,9 @@ export default function ArcadeClient() {
   const [customColor, setCustomColor] = useState(defaultColor);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showHomeButton, setShowHomeButton] = useState(true);
-  const [hideFlashGames, setHideFlashGames] = useState(true);
-  const [hidePortGames, setHidePortGames] = useState(false);
-  const [hideEmulatorGames, setHideEmulatorGames] = useState(false);
+  const [showFlashGames, setShowFlashGames] = useState(true);
+  const [showPortGames, setShowPortGames] = useState(true);
+  const [showEmulatorGames, setShowEmulatorGames] = useState(true);
 
   const getCookie = useCallback((name: string) => {
     const value = `; ${document.cookie}`;
@@ -57,6 +58,7 @@ export default function ArcadeClient() {
 
       setCustomColor(hexColor);
       setCookie("customColor", hexColor, 30);
+      updateFaviconWithTheme(c.bg, c.text);
     },
     [setCookie],
   );
@@ -78,28 +80,28 @@ export default function ArcadeClient() {
       setShowHomeButton(savedShowHomeButton !== "false");
     }
 
-    const savedHideFlashGames = getCookie("hideFlashGames");
-    if (savedHideFlashGames === null) {
-      setCookie("hideFlashGames", "true", 30);
-      setHideFlashGames(true);
+    const savedShowFlashGames = getCookie("showFlashGames");
+    if (savedShowFlashGames === null) {
+      setCookie("showFlashGames", "true", 30);
+      setShowFlashGames(true);
     } else {
-      setHideFlashGames(savedHideFlashGames !== "false");
+      setShowFlashGames(savedShowFlashGames !== "false");
     }
 
-    const savedHidePortGames = getCookie("hidePortGames");
-    if (savedHidePortGames === null) {
-      setCookie("hidePortGames", "false", 30);
-      setHidePortGames(false);
+    const savedShowPortGames = getCookie("showPortGames");
+    if (savedShowPortGames === null) {
+      setCookie("showPortGames", "true", 30);
+      setShowPortGames(true);
     } else {
-      setHidePortGames(savedHidePortGames === "true");
+      setShowPortGames(savedShowPortGames !== "false");
     }
 
-    const savedHideEmulatorGames = getCookie("hideEmulatorGames");
-    if (savedHideEmulatorGames === null) {
-      setCookie("hideEmulatorGames", "false", 30);
-      setHideEmulatorGames(false);
+    const savedShowEmulatorGames = getCookie("showEmulatorGames");
+    if (savedShowEmulatorGames === null) {
+      setCookie("showEmulatorGames", "true", 30);
+      setShowEmulatorGames(true);
     } else {
-      setHideEmulatorGames(savedHideEmulatorGames === "true");
+      setShowEmulatorGames(savedShowEmulatorGames !== "false");
     }
   }, [applyTheme, getCookie, setCookie]);
 
@@ -171,20 +173,20 @@ export default function ArcadeClient() {
           setShowHomeButton(nextValue);
           setCookie("showHomeButton", String(nextValue), 30);
         }}
-        hideFlashGames={hideFlashGames}
-        onHideFlashGamesToggle={(nextValue) => {
-          setHideFlashGames(nextValue);
-          setCookie("hideFlashGames", String(nextValue), 30);
+        showFlashGames={showFlashGames}
+        onShowFlashGamesToggle={(nextValue) => {
+          setShowFlashGames(nextValue);
+          setCookie("showFlashGames", String(nextValue), 30);
         }}
-        hidePortGames={hidePortGames}
-        onHidePortGamesToggle={(nextValue) => {
-          setHidePortGames(nextValue);
-          setCookie("hidePortGames", String(nextValue), 30);
+        showPortGames={showPortGames}
+        onShowPortGamesToggle={(nextValue) => {
+          setShowPortGames(nextValue);
+          setCookie("showPortGames", String(nextValue), 30);
         }}
-        hideEmulatorGames={hideEmulatorGames}
-        onHideEmulatorGamesToggle={(nextValue) => {
-          setHideEmulatorGames(nextValue);
-          setCookie("hideEmulatorGames", String(nextValue), 30);
+        showEmulatorGames={showEmulatorGames}
+        onShowEmulatorGamesToggle={(nextValue) => {
+          setShowEmulatorGames(nextValue);
+          setCookie("showEmulatorGames", String(nextValue), 30);
         }}
       />
     </>

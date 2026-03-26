@@ -9,12 +9,12 @@ interface SettingsPanelProps {
   onFileImport: (file: File) => void;
   showHomeButton: boolean;
   onHomeButtonToggle: (showHomeButton: boolean) => void;
-  hideFlashGames: boolean;
-  onHideFlashGamesToggle: (hideFlashGames: boolean) => void;
-  hidePortGames: boolean;
-  onHidePortGamesToggle: (hidePortGames: boolean) => void;
-  hideEmulatorGames: boolean;
-  onHideEmulatorGamesToggle: (hideEmulatorGames: boolean) => void;
+  showFlashGames: boolean;
+  onShowFlashGamesToggle: (showFlashGames: boolean) => void;
+  showPortGames: boolean;
+  onShowPortGamesToggle: (showPortGames: boolean) => void;
+  showEmulatorGames: boolean;
+  onShowEmulatorGamesToggle: (showEmulatorGames: boolean) => void;
 }
 
 export default function SettingsPanel({
@@ -26,12 +26,12 @@ export default function SettingsPanel({
   onFileImport,
   showHomeButton,
   onHomeButtonToggle,
-  hideFlashGames,
-  onHideFlashGamesToggle,
-  hidePortGames,
-  onHidePortGamesToggle,
-  hideEmulatorGames,
-  onHideEmulatorGamesToggle,
+  showFlashGames,
+  onShowFlashGamesToggle,
+  showPortGames,
+  onShowPortGamesToggle,
+  showEmulatorGames,
+  onShowEmulatorGamesToggle,
 }: SettingsPanelProps) {
   const handleHexChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -45,9 +45,7 @@ export default function SettingsPanel({
       <div className={`settings-panel ${isOpen ? 'show' : ''}`}>
         <div className="settings-header">
           <h3>settings</h3>
-          <p>Adjust the look of the arcade and manage saved data.</p>
         </div>
-
         <section className="settings-section">
           <div className="settings-section-title">appearance</div>
           <label htmlFor="colorPicker" className="settings-label">theme color</label>
@@ -87,40 +85,40 @@ export default function SettingsPanel({
               onChange={(e) => onHomeButtonToggle(e.target.checked)}
             />
           </label>
-          <label htmlFor="hideFlashGamesToggle" className="settings-switch">
+          <label htmlFor="showFlashGamesToggle" className="settings-switch">
             <div>
-              <div className="settings-switch-title">hide flash games</div>
+              <div className="settings-switch-title">show flash games</div>
             </div>
             <input
-              id="hideFlashGamesToggle"
+              id="showFlashGamesToggle"
               type="checkbox"
               className="settings-toggle-checkbox"
-              checked={hideFlashGames}
-              onChange={(e) => onHideFlashGamesToggle(e.target.checked)}
+              checked={showFlashGames}
+              onChange={(e) => onShowFlashGamesToggle(e.target.checked)}
             />
           </label>
-          <label htmlFor="hidePortGamesToggle" className="settings-switch">
+          <label htmlFor="showPortGamesToggle" className="settings-switch">
             <div>
-              <div className="settings-switch-title">hide ported games</div>
+              <div className="settings-switch-title">show ported games</div>
             </div>
             <input
-              id="hidePortGamesToggle"
+              id="showPortGamesToggle"
               type="checkbox"
               className="settings-toggle-checkbox"
-              checked={hidePortGames}
-              onChange={(e) => onHidePortGamesToggle(e.target.checked)}
+              checked={showPortGames}
+              onChange={(e) => onShowPortGamesToggle(e.target.checked)}
             />
           </label>
-          <label htmlFor="hideEmulatorGamesToggle" className="settings-switch">
+          <label htmlFor="showEmulatorGamesToggle" className="settings-switch">
             <div>
-              <div className="settings-switch-title">hide emulator games</div>
+              <div className="settings-switch-title">show emulator games</div>
             </div>
             <input
-              id="hideEmulatorGamesToggle"
+              id="showEmulatorGamesToggle"
               type="checkbox"
               className="settings-toggle-checkbox"
-              checked={hideEmulatorGames}
-              onChange={(e) => onHideEmulatorGamesToggle(e.target.checked)}
+              checked={showEmulatorGames}
+              onChange={(e) => onShowEmulatorGamesToggle(e.target.checked)}
             />
           </label>
         </section>
