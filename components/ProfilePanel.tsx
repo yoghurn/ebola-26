@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser';
+import { ensureLocalGameProgress, readLocalGameProgress, writeLocalGameProgress } from '../lib/gameProgress';
 import {
   getCodeValidationMessage,
   getUsernameValidationMessage,
@@ -12,6 +13,11 @@ import {
 
 interface ProfilePanelProps {
   isOpen: boolean;
+}
+
+interface CloudProgressRecord {
+  progress: unknown;
+  syncedAt: string | null;
 }
 
 export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
@@ -24,6 +30,12 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [cloudProgress, setCloudProgress] = useState<CloudProgressRecord | null>(null);
+  const [showSyncMenu, setShowSyncMenu] = useState(false);
+
+  useEffect(() => {
+    ensureLocalGameProgress();
+  }, []);
 
   useEffect(() => {
     if (!supabase) {
@@ -51,6 +63,76 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
   }, [supabase]);
 
   const currentUsername = session?.user.user_metadata?.username as string | undefined;
+  const hasCloudProgress = cloudProgress?.progress !== null && cloudProgress?.progress !== undefined;
+  const lastSyncedLabel = cloudProgress?.syncedAt
+    ? new Date(cloudProgress.syncedAt).toLocaleString()
+    : 'No cloud backup yet';
+
+  const getAccessToken = async () => {
+    if (!supabase) {
+      return null;
+    }
+
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  };
+
+  const loadCloudProgressRecord = async () => {
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      return null;
+    }
+
+    const response = await fetch('/api/progress', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    const payload = (await response.json().catch(() => null)) as
+      | { progress?: unknown; syncedAt?: string | null; error?: string }
+      | null;
+
+    if (!response.ok) {
+      throw new Error(payload?.error || 'Could not load cloud progress.');
+    }
+
+    return {
+      progress: payload?.progress ?? null,
+      syncedAt: payload?.syncedAt ?? null,
+    } satisfies CloudProgressRecord;
+  };
+
+  const replaceCloudWithCurrentProgress = async () => {
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      throw new Error('Missing session token.');
+    }
+
+    const response = await fetch('/api/progress', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        progress: readLocalGameProgress(),
+      }),
+    });
+
+    const payload = (await response.json().catch(() => null)) as { syncedAt?: string; error?: string } | null;
+    if (!response.ok) {
+      throw new Error(payload?.error || 'Could not sync current progress.');
+    }
+
+    const nextRecord = {
+      progress: JSON.parse(readLocalGameProgress()),
+      syncedAt: payload?.syncedAt ?? null,
+    } satisfies CloudProgressRecord;
+
+    setCloudProgress(nextRecord);
+    return nextRecord;
+  };
 
   const resetFeedback = () => {
     setErrorMessage('');
@@ -89,7 +171,19 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
     });
 
     if (!signInResult.error) {
-      setStatusMessage(`Signed in as ${normalizedUsername}.`);
+      try {
+        const cloudRecord = await loadCloudProgressRecord();
+        setCloudProgress(cloudRecord);
+        setShowSyncMenu(true);
+        setStatusMessage(
+          cloudRecord?.syncedAt
+            ? `Last synced at: ${new Date(cloudRecord.syncedAt).toLocaleString()}`
+            : 'Last synced at: not synced yet',
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Could not load cloud progress.';
+        setErrorMessage(message);
+      }
       setCode('');
       setIsSubmitting(false);
       return;
@@ -113,7 +207,18 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
       });
 
       if (!retrySignIn.error) {
-        setStatusMessage(`Created and signed in as ${normalizedUsername}.`);
+        try {
+          const cloudRecord = await replaceCloudWithCurrentProgress();
+          setShowSyncMenu(false);
+          setStatusMessage(
+            cloudRecord.syncedAt
+              ? `Last synced at: ${new Date(cloudRecord.syncedAt).toLocaleString()}`
+              : 'Last synced at: not synced yet',
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Account created, but cloud sync failed.';
+          setErrorMessage(message);
+        }
         setCode('');
         setIsSubmitting(false);
         return;
@@ -149,6 +254,8 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
       setStatusMessage('Signed out.');
       setUsername('');
       setCode('');
+      setCloudProgress(null);
+      setShowSyncMenu(false);
     }
     setIsSubmitting(false);
   };
@@ -185,6 +292,45 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
     setIsSubmitting(false);
   };
 
+  const handleLoadCloudProgress = async () => {
+    if (!hasCloudProgress) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage('');
+
+    try {
+      writeLocalGameProgress(JSON.stringify(cloudProgress?.progress ?? {}));
+      setShowSyncMenu(false);
+      setStatusMessage(
+        `Loaded cloud progress${cloudProgress?.syncedAt ? ` from ${new Date(cloudProgress.syncedAt).toLocaleString()}` : ''}.`,
+      );
+    } catch {
+      setErrorMessage('Could not load cloud progress into local storage.');
+    }
+
+    setIsSubmitting(false);
+  };
+
+  const handleReplaceWithCurrentProgress = async () => {
+    setIsSubmitting(true);
+    setErrorMessage('');
+
+    try {
+      const nextRecord = await replaceCloudWithCurrentProgress();
+      setShowSyncMenu(false);
+      setStatusMessage(
+        `Cloud progress replaced with current progress${nextRecord.syncedAt ? ` at ${new Date(nextRecord.syncedAt).toLocaleString()}` : ''}.`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not replace cloud progress.';
+      setErrorMessage(message);
+    }
+
+    setIsSubmitting(false);
+  };
+
   return (
     <div className={`profile-panel ${isOpen ? 'show' : ''}`}>
       <div className="settings-header">
@@ -194,12 +340,70 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
       <section className="settings-section">
         {session ? (
           <>
+            {showSyncMenu && (
+              <div className="profile-sync-menu">
+                <div className="settings-section-title">sync progress</div>
+                <button
+                  type="button"
+                  className="profile-sync-option"
+                  onClick={handleLoadCloudProgress}
+                  disabled={isSubmitting || !hasCloudProgress}
+                >
+                  <span className="profile-sync-option-title">Load Game Progress</span>
+                  <span className="profile-sync-option-description">
+                    {hasCloudProgress
+                      ? `Load your progress from the cloud if you lost your data. Last synced at: ${lastSyncedLabel}`
+                      : 'Load your progress from the cloud if you lost your data. No cloud progress is saved yet.'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="profile-sync-option"
+                  onClick={handleReplaceWithCurrentProgress}
+                  disabled={isSubmitting}
+                >
+                  <span className="profile-sync-option-title">Replace with Current Progress</span>
+                  <span className="profile-sync-option-description">
+                    Continue with the game progress you had right now before logging in, this will replace the progress you have saved on the cloud.
+                  </span>
+                </button>
+              </div>
+            )}
             <div className="profile-session-card">
               <div className="settings-section-title">signed in as</div>
               <div className="profile-session-name">@{currentUsername || session.user.email || 'account'}</div>
-              <p className="settings-help">Your session is stored locally in Supabase auth.</p>
+              <p className="settings-help">
+                {cloudProgress?.syncedAt ? `Last synced at: ${lastSyncedLabel}` : 'No cloud progress synced yet.'}
+              </p>
             </div>
             <div className="settings-actions">
+              <button
+                type="button"
+                className="settings-action"
+                onClick={async () => {
+                  setIsSubmitting(true);
+                  setErrorMessage('');
+
+                  try {
+                    const cloudRecord = await loadCloudProgressRecord();
+                    setCloudProgress(cloudRecord);
+                    setShowSyncMenu(true);
+                    setStatusMessage(
+                      cloudRecord?.syncedAt
+                        ? `Last synced at: ${new Date(cloudRecord.syncedAt).toLocaleString()}`
+                        : 'Last synced at: not synced yet',
+                    );
+                  } catch (error) {
+                    const message = error instanceof Error ? error.message : 'Could not open sync options.';
+                    setErrorMessage(message);
+                  }
+
+                  setIsSubmitting(false);
+                }}
+                disabled={isSubmitting}
+              >
+                sync options
+              </button>
               <button
                 type="button"
                 className="settings-action"

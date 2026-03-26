@@ -605,6 +605,29 @@
     gap: 12px;
 }
 
+.profile-sync-menu {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.profile-sync-option {
+    display: grid;
+    gap: 6px;
+    text-align: left;
+}
+
+.profile-sync-option-title {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.profile-sync-option-description {
+    font-size: 12px;
+    line-height: 1.45;
+    opacity: 0.86;
+}
+
 .profile-password-form {
     margin-top: 12px;
 }
