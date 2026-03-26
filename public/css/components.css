@@ -605,6 +605,10 @@
     gap: 12px;
 }
 
+.profile-password-form {
+    margin-top: 12px;
+}
+
 .profile-session-card {
     border: 1px solid var(--card-border-color);
     border-radius: 8px;

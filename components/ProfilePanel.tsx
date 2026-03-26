@@ -18,10 +18,12 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [username, setUsername] = useState('');
   const [code, setCode] = useState('');
+  const [newCode, setNewCode] = useState('');
   const [session, setSession] = useState<Session | null>(null);
-  const [statusMessage, setStatusMessage] = useState('Use your username and code to sign in or create an account.');
+  const [statusMessage, setStatusMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   useEffect(() => {
     if (!supabase) {
@@ -151,6 +153,38 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
     setIsSubmitting(false);
   };
 
+  const handleChangePassword = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!supabase) {
+      setErrorMessage('Supabase is not configured. Add the required environment variables.');
+      return;
+    }
+
+    const codeError = getCodeValidationMessage(newCode);
+    if (codeError) {
+      setErrorMessage(codeError);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage('');
+
+    const { error } = await supabase.auth.updateUser({
+      password: newCode,
+    });
+
+    if (error) {
+      setErrorMessage(error.message);
+    } else {
+      setStatusMessage('Code updated.');
+      setNewCode('');
+      setShowChangePassword(false);
+    }
+
+    setIsSubmitting(false);
+  };
+
   return (
     <div className={`profile-panel ${isOpen ? 'show' : ''}`}>
       <div className="settings-header">
@@ -161,15 +195,53 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
         {session ? (
           <>
             <div className="profile-session-card">
-              <div className="settings-section-title">signed in</div>
-              <div className="profile-session-name">{currentUsername || session.user.email || 'account'}</div>
+              <div className="settings-section-title">signed in as</div>
+              <div className="profile-session-name">@{currentUsername || session.user.email || 'account'}</div>
               <p className="settings-help">Your session is stored locally in Supabase auth.</p>
             </div>
             <div className="settings-actions">
+              <button
+                type="button"
+                className="settings-action"
+                onClick={() => {
+                  setShowChangePassword((current) => !current);
+                  setErrorMessage('');
+                  setStatusMessage('');
+                }}
+                disabled={isSubmitting}
+              >
+                {showChangePassword ? 'cancel password change' : 'change password'}
+              </button>
               <button type="button" className="settings-action" onClick={handleSignOut} disabled={isSubmitting}>
                 {isSubmitting ? 'signing out...' : 'sign out'}
               </button>
             </div>
+            {showChangePassword && (
+              <form className="profile-form profile-password-form" onSubmit={handleChangePassword}>
+                <label className="settings-label" htmlFor="profileNewCode">
+                  new code
+                  <input
+                    id="profileNewCode"
+                    type="password"
+                    className="settings-text-input"
+                    placeholder="enter a new code"
+                    autoComplete="new-password"
+                    value={newCode}
+                    onChange={(event) => {
+                      setNewCode(event.target.value);
+                      setErrorMessage('');
+                      setStatusMessage('');
+                    }}
+                    disabled={isSubmitting}
+                  />
+                </label>
+                <div className="settings-actions">
+                  <button type="submit" className="settings-action" disabled={isSubmitting}>
+                    {isSubmitting ? 'updating...' : 'update password'}
+                  </button>
+                </div>
+              </form>
+            )}
           </>
         ) : (
           <form className="profile-form" onSubmit={handleSubmit}>
