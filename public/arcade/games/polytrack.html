@@ -1,0 +1,319 @@
+
+clpolytrackworksnow.html
+
+Page
+1
+/
+1
+100%
+<!DOCTYPE html>
+
+	
+
+<!-- Ultimate Game Stash file--> 
+<!-- For the regularly updating doc go to https://docs.google.com/document/d/1_FmH3BlSBQI7FGgAQL59-ZPe8eCxs35wel6JUyVaG8Q/ -->
+<!-- Credit airbender5026 and iceverychill -->
+
+
+<html>
+<head>
+	<title>Polytrack</title>
+    <base href="https://cdn.jsdelivr.net/gh/AZURE2077/polytrack-beta-0.6.0@main/">
+    <script>
+        var NativeImage = window.Image;
+        window.Image = function() {
+            var img = arguments.length ? new NativeImage(arguments[0], arguments[1]) : new NativeImage();
+            img.crossOrigin = "anonymous";
+            return img;
+        };
+        window.Image.prototype = NativeImage.prototype;
+        var _createElement = document.createElement.bind(document);
+        document.createElement = function(tag) {
+            var el = _createElement.apply(document, arguments);
+            if (typeof tag === "string" && tag.toLowerCase() === "img") {
+                el.crossOrigin = "anonymous";
+            }
+            return el;
+        };
+        var _audioContexts = [];
+        var _gestured = false;
+        function _resumeAll() {
+            _gestured = true;
+            _audioContexts.forEach(function(ctx) {
+                if (ctx.state === "suspended") ctx.resume();
+            });
+        }
+        document.addEventListener("click", _resumeAll, true);
+        document.addEventListener("keydown", _resumeAll, true);
+        document.addEventListener("touchstart", _resumeAll, true);
+        var NativeAC = window.AudioContext || window.webkitAudioContext;
+        if (NativeAC) {
+            var PatchedAC = function() {
+                var ctx = arguments.length ? new NativeAC(arguments[0]) : new NativeAC();
+                _audioContexts.push(ctx);
+                if (_gestured && ctx.state === "suspended") ctx.resume();
+                return ctx;
+            };
+            PatchedAC.prototype = NativeAC.prototype;
+            try { window.AudioContext = PatchedAC; } catch(e) {}
+            try { window.webkitAudioContext = PatchedAC; } catch(e) {}
+        }
+        var cdnBase = document.querySelector("base").href;
+        var PROXY = "vpskodub.tmena1565.workers.dev";
+        var workerPatchLines = [
+            'var __cdnBase = "' + cdnBase + '";',
+            'var __proxy = "' + PROXY + '";',
+            'function __resolveUrl(url) {',
+            '    if (typeof url !== "string") return url;',
+            '    if (url.indexOf("http") !== 0 && url.indexOf("blob:") !== 0 && url.indexOf("data:") !== 0 && url.indexOf("//") !== 0) {',
+            '        return __cdnBase + url.replace(/^\\//, "");',
+            '    }',
+            '    return url.replace("vps.kodub.com", __proxy);',
+            '}',
+            'var __origFetch = self.fetch.bind(self);',
+            'self.fetch = function(input, init) {',
+            '    if (typeof input === "string") input = __resolveUrl(input);',
+            '    else if (input instanceof Request) input = new Request(__resolveUrl(input.url), input);',
+            '    return __origFetch(input, init);',
+            '};',
+            'var __origXHROpen = XMLHttpRequest.prototype.open;',
+            'XMLHttpRequest.prototype.open = function(method, url) {',
+            '    var args = Array.prototype.slice.call(arguments);',
+            '    args[1] = __resolveUrl(url);',
+            '    return __origXHROpen.apply(this, args);',
+            '};'
+        ];
+        var workerPatch = workerPatchLines.join("\n") + "\n";
+        window.simulationWorkerReady = fetch(cdnBase + "simulation_worker.bundle.js")
+            .then(function(res) { return res.text(); })
+            .then(function(text) {
+                text = text.split("replacethisplease").join(cdnBase);
+                text = text.replace(
+                    /importScripts\(\s*["'](?!https?:\/\/|blob:|data:)([^"']+)["']\s*\)/g,
+                    function(match, path) { return 'importScripts("' + cdnBase + path + '")'; }
+                );
+                text = workerPatch + text;
+                return "data:application/javascript," + encodeURIComponent(text);
+            });
+        var ogWorker = window.Worker;
+        window.Worker = function(scriptUrl, options) {
+            if (typeof scriptUrl === "string" && scriptUrl.toLowerCase() === "simulation_worker.bundle.js") {
+                var realWorker = null;
+                var pendingPosts = [];
+                var listeners = {};
+                var wrapper = {
+                    postMessage: function() {
+                        var args = arguments;
+                        if (realWorker) realWorker.postMessage.apply(realWorker, args);
+                        else pendingPosts.push(args);
+                    },
+                    terminate: function() { if (realWorker) realWorker.terminate(); },
+                    addEventListener: function(type, fn, opts) {
+                        if (!listeners[type]) listeners[type] = [];
+                        listeners[type].push({ fn: fn, opts: opts });
+                        if (realWorker) realWorker.addEventListener(type, fn, opts);
+                    },
+                    removeEventListener: function(type, fn) {
+                        if (realWorker) realWorker.removeEventListener(type, fn);
+                    }
+                };
+                Object.defineProperty(wrapper, "onmessage", {
+                    get: function() { return this._onmessage; },
+                    set: function(fn) { this._onmessage = fn; if (realWorker) realWorker.onmessage = fn; }
+                });
+                Object.defineProperty(wrapper, "onerror", {
+                    get: function() { return this._onerror; },
+                    set: function(fn) { this._onerror = fn; if (realWorker) realWorker.onerror = fn; }
+                });
+                window.simulationWorkerReady.then(function(dataUri) {
+                    realWorker = new ogWorker(dataUri, options);
+                    realWorker.onmessage = function(e) { if (wrapper._onmessage) wrapper._onmessage(e); };
+                    realWorker.onerror   = function(e) { if (wrapper._onerror)   wrapper._onerror(e); };
+                    Object.keys(listeners).forEach(function(type) {
+                        listeners[type].forEach(function(item) {
+                            realWorker.addEventListener(type, item.fn, item.opts);
+                        });
+                    });
+                    pendingPosts.forEach(function(args) {
+                        realWorker.postMessage.apply(realWorker, args);
+                    });
+                });
+                return wrapper;
+            }
+            return new ogWorker(scriptUrl, options);
+        };
+        window.Worker.prototype = ogWorker.prototype;
+        var ogFetch = window.fetch;
+        window.fetch = function(input, init) {
+            if (typeof input === "string") {
+                input = input.replace("vps.kodub.com", PROXY);
+            } else if (input instanceof Request) {
+                input = new Request(input.url.replace("vps.kodub.com", PROXY), input);
+            }
+            return ogFetch(input, init);
+        };
+        var ogXHROpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function(method, url) {
+            var args = Array.prototype.slice.call(arguments);
+            if (typeof url === "string") args[1] = url.replace("vps.kodub.com", PROXY);
+            return ogXHROpen.apply(this, args);
+        };
+    </script>
+    <meta charset="utf-8">
+    <link rel="preload" href="forced_square.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" href="images/logo.svg" as="image" type="image/svg+xml" crossorigin="anonymous" />
+    <link rel="preload" href="images/discord.svg" as="image" type="image/svg+xml" crossorigin="anonymous" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #screen {
+            display: block;
+        }
+
+        #arcade-home-button {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            padding: 0;
+            appearance: none;
+        }
+
+        #arcade-home-button svg {
+            width: 28px;
+            height: 28px;
+            fill: currentColor;
+        }
+    </style>
+    <script>
+        function getCookie(name) {
+            var value = '; ' + document.cookie;
+            var parts = value.split('; ' + name + '=');
+            return parts.length === 2 ? parts.pop().split(';').shift() : null;
+        }
+
+        function hexToRgb(hex) {
+            var match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            if (!match) return null;
+            return {
+                r: parseInt(match[1], 16),
+                g: parseInt(match[2], 16),
+                b: parseInt(match[3], 16)
+            };
+        }
+
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(function(value) {
+                var hex = value.toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            }).join('');
+        }
+
+        function adjustBrightness(hex, percent) {
+            var rgb = hexToRgb(hex);
+            if (!rgb) return hex;
+
+            return rgbToHex(
+                Math.min(255, Math.max(0, Math.round(rgb.r + rgb.r * (percent / 100)))),
+                Math.min(255, Math.max(0, Math.round(rgb.g + rgb.g * (percent / 100)))),
+                Math.min(255, Math.max(0, Math.round(rgb.b + rgb.b * (percent / 100))))
+            );
+        }
+
+        function generatePaletteFromHex(hex) {
+            if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+                hex = '#FFFFFF';
+            }
+
+            var link = adjustBrightness(hex, -50);
+            var border = adjustBrightness(hex, -30);
+            var overlayRgb = hexToRgb(link);
+
+            return {
+                text: hex,
+                border: border,
+                bottomBorder: link,
+                overlay: overlayRgb ? 'rgba(' + overlayRgb.r + ',' + overlayRgb.g + ',' + overlayRgb.b + ',0.75)' : 'rgba(33,13,0,0.75)'
+            };
+        }
+
+        async function updateFaviconWithTheme(bgColor, textColor) {
+            try {
+                var response = await fetch(window.location.origin + '/assets/flaticon.svg');
+                var svg = await response.text();
+                svg = svg.replace(/#333333/g, bgColor);
+                svg = svg.replace(/fill="white"/g, 'fill="' + textColor + '"');
+
+                var faviconLink = document.querySelector('link[rel="icon"]');
+                if (!faviconLink) {
+                    faviconLink = document.createElement('link');
+                    faviconLink.rel = 'icon';
+                    document.head.appendChild(faviconLink);
+                }
+
+                faviconLink.href = 'data:image/svg+xml;base64,' + btoa(svg);
+            } catch (error) {
+                console.error('Could not update favicon with theme:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var customColor = getCookie('customColor') || '#FFFFFF';
+            var showHomeButton = getCookie('showHomeButton') !== 'false';
+            var palette = generatePaletteFromHex(customColor);
+            var homeButton = document.getElementById('arcade-home-button');
+
+            updateFaviconWithTheme(adjustBrightness(customColor, -80), customColor);
+
+            if (homeButton && showHomeButton) {
+                homeButton.style.display = 'flex';
+                homeButton.style.border = '2px solid ' + palette.bottomBorder;
+                homeButton.style.background = palette.overlay;
+                homeButton.style.color = palette.bottomBorder;
+                homeButton.addEventListener('mouseenter', function() {
+                    homeButton.style.background = palette.overlay.replace(/0\.75\)/, '0.9)');
+                });
+                homeButton.addEventListener('mouseleave', function() {
+                    homeButton.style.background = palette.overlay;
+                });
+                homeButton.addEventListener('click', function() {
+                    window.location.assign(window.location.origin + '/arcade/');
+                });
+            }
+        });
+    </script>
+    <script defer="defer" src="error_screen.bundle.js"></script>
+    <script defer="defer" src="main.bundle.js"></script>
+</head>
+<body>
+    <canvas id="screen"></canvas>
+    <div id="ui"></div>
+    <div id="transition-layer"></div>
+    <button id="arcade-home-button" aria-label="Go back home">
+        <svg viewBox="0 0 460.298 460.297" aria-hidden="true">
+            <g>
+                <path d="M230.149 120.939 65.986 256.274c0 .191-.048.472-.144.855-.094.38-.144.656-.144.852v137.041c0 4.948 1.809 9.236 5.426 12.847 3.616 3.613 7.898 5.431 12.847 5.431h109.63V303.664h73.097v109.64h109.629c4.948 0 9.236-1.814 12.847-5.435 3.617-3.607 5.432-7.898 5.432-12.847V257.981c0-.76-.104-1.334-.288-1.707L230.149 120.939z"></path>
+                <path d="M457.122 225.438 394.6 173.476V56.989c0-2.663-.856-4.853-2.574-6.567-1.704-1.712-3.894-2.568-6.563-2.568h-54.816c-2.666 0-4.855.856-6.57 2.568-1.711 1.714-2.566 3.905-2.566 6.567v55.673l-69.662-58.245c-6.084-4.949-13.318-7.423-21.694-7.423-8.375 0-15.608 2.474-21.698 7.423L3.172 225.438c-1.903 1.52-2.946 3.566-3.14 6.136-.193 2.568.472 4.811 1.997 6.713l17.701 21.128c1.525 1.712 3.521 2.759 5.996 3.142 2.285.192 4.57-.476 6.855-1.998L230.149 95.817l197.57 164.741c1.526 1.328 3.521 1.991 5.996 1.991h.858c2.471-.376 4.463-1.43 5.996-3.138l17.703-21.125c1.522-1.906 2.189-4.145 1.991-6.716-.195-2.563-1.242-4.609-3.141-6.132z"></path>
+            </g>
+        </svg>
+    </button>
+</body>
+</html>
+Displaying clpolytrackworksnow.html.

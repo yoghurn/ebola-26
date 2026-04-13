@@ -1,0 +1,18 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Droid Sans Mono', 'Source Code Pro', 'Consolas', 'Courier New', monospace;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    padding: 90px 0 40px;
+    user-select: none;
+}
+
+input, textarea { user-select: text; }
+
+::placeholder {
+    color: var(--link-color);
+}
+
+img { pointer-events: none; user-drag: none; }
