@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import Topbar from '../../components/Topbar';
 import SettingsPanel from '../../components/SettingsPanel';
@@ -22,11 +22,28 @@ interface Game {
   special?: string[];
 }
 
+const REPORT_TYPES = ['Game not loading', 'Bug Report', 'DMCA', 'Other'] as const;
+const SECTION_VISIBILITY_COOKIE = 'arcadeSectionVisibility';
+const SHOW_RECENTLY_PLAYED_SECTION = false;
+
+type SectionVisibilityState = {
+  favorites: boolean;
+  recentlyPlayed: boolean;
+  allGames: boolean;
+};
+
+const DEFAULT_SECTION_VISIBILITY: SectionVisibilityState = {
+  favorites: true,
+  recentlyPlayed: true,
+  allGames: true,
+};
+
 export default function ArcadePage() {
   const [allGames, setAllGames] = useState<Game[]>([]);
   const [filteredGames, setFilteredGames] = useState<Game[]>([]);
   const [recentlyPlayed, setRecentlyPlayed] = useState<Game[]>([]);
   const [favorites, setFavorites] = useState<Game[]>([]);
+  const [sectionVisibility, setSectionVisibility] = useState<SectionVisibilityState>(DEFAULT_SECTION_VISIBILITY);
   const [customColor, setCustomColor] = useState<string>('#FFFFFF');
   const [colorPalette, setColorPalette] = useState<ColorPalette>(generatePaletteFromHex('#FFFFFF'));
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -38,13 +55,20 @@ export default function ArcadePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showHomeButton, setShowHomeButton] = useState(true);
   const [showFlashGames, setShowFlashGames] = useState(true);
-  const [showPortGames, setShowPortGames] = useState(false);
-  const [showEmulatorGames, setShowEmulatorGames] = useState(false);
+  const [showPortGames, setShowPortGames] = useState(true);
+  const [showEmulatorGames, setShowEmulatorGames] = useState(true);
   const [isThemeLoaded, setIsThemeLoaded] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
   const [splashFading, setSplashFading] = useState(false);
   const [splashLogoMarkup, setSplashLogoMarkup] = useState('');
   const [requireSignIn, setRequireSignIn] = useState(true);
+  const [reportMenuGame, setReportMenuGame] = useState<Game | null>(null);
+  const [reportType, setReportType] = useState<(typeof REPORT_TYPES)[number]>('Game not loading');
+  const [reportDescription, setReportDescription] = useState('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [reportSubmitMessage, setReportSubmitMessage] = useState('');
+  const splashFadeTimerRef = useRef<number | null>(null);
+  const splashRemoveTimerRef = useRef<number | null>(null);
   const onlineCount = useOnlineCount();
 
   const MAX_RECENT = 5;
@@ -65,6 +89,33 @@ export default function ArcadePage() {
       expires = '; expires=' + date.toUTCString();
     }
     document.cookie = `${name}=${value}${expires}; path=/`;
+  };
+
+  const getSectionVisibilityFromStorage = (): SectionVisibilityState => {
+    const cookie = getCookie(SECTION_VISIBILITY_COOKIE);
+    if (!cookie) return DEFAULT_SECTION_VISIBILITY;
+
+    try {
+      const parsed = JSON.parse(cookie) as Partial<SectionVisibilityState>;
+      return {
+        favorites: parsed.favorites ?? DEFAULT_SECTION_VISIBILITY.favorites,
+        recentlyPlayed: parsed.recentlyPlayed ?? DEFAULT_SECTION_VISIBILITY.recentlyPlayed,
+        allGames: parsed.allGames ?? DEFAULT_SECTION_VISIBILITY.allGames,
+      };
+    } catch {
+      return DEFAULT_SECTION_VISIBILITY;
+    }
+  };
+
+  const toggleSectionVisibility = (section: keyof SectionVisibilityState) => {
+    setSectionVisibility((current) => {
+      const next = {
+        ...current,
+        [section]: !current[section],
+      };
+      setCookie(SECTION_VISIBILITY_COOKIE, JSON.stringify(next));
+      return next;
+    });
   };
 
   // Recently Played
@@ -119,27 +170,78 @@ export default function ArcadePage() {
       newFavs = [...favs, game];
     }
     saveFavorites(newFavs);
-    updateGamesDisplay(searchQuery, newFavs);
+    updateGamesDisplay(searchQuery);
   };
 
-  const sortGames = (games: Game[], favs: Game[] = favorites) => {
-    return games.sort((a, b) => {
-      const aFav = isFavorited(a, favs);
-      const bFav = isFavorited(b, favs);
-      if (aFav && !bFav) return -1;
-      if (!aFav && bFav) return 1;
-      return (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase());
-    });
+  const openReportMenu = (game: Game) => {
+    setReportMenuGame(game);
+    setReportType('Game not loading');
+    setReportDescription('');
+    setReportSubmitMessage('');
   };
 
-  const updateGamesDisplay = (query: string, favs?: Game[]) => {
-    const currentFavs = favs || getFavoritesFromStorage();
+  const closeReportMenu = () => {
+    setReportMenuGame(null);
+    setReportType('Game not loading');
+    setReportDescription('');
+    setReportSubmitMessage('');
+    setIsSubmittingReport(false);
+  };
+
+  const handleReportSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!reportMenuGame || !reportDescription.trim()) {
+      setReportSubmitMessage('description is required');
+      return;
+    }
+
+    const supabase = getSupabaseBrowserClient();
+    let accessToken: string | null = null;
+
+    if (supabase) {
+      const { data } = await supabase.auth.getSession();
+      accessToken = data.session?.access_token ?? null;
+    }
+
+    setIsSubmittingReport(true);
+    setReportSubmitMessage('');
+
+    try {
+      const response = await fetch('/api/reports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({
+          type: reportType,
+          gameId: reportMenuGame.gameID,
+          gameName: reportMenuGame.name,
+          description: reportDescription.trim(),
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as { error?: string; success?: boolean } | null;
+      if (!response.ok) {
+        throw new Error(payload?.error || 'could not submit report');
+      }
+
+      setReportSubmitMessage('report submitted');
+      setReportDescription('');
+    } catch (error) {
+      setReportSubmitMessage(error instanceof Error ? error.message.toLowerCase() : 'could not submit report');
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
+
+  const updateGamesDisplay = (query: string) => {
     const normalizedQuery = query.trim().toLowerCase();
     let gamesToDisplay = allGames.filter((g) => {
       if (g.special?.includes('fnf')) return false;
-      if (showFlashGames && g.special?.includes('flash')) return false;
-      if (showPortGames && g.special?.includes('port')) return false;
-      if (showEmulatorGames && g.special?.includes('emulator')) return false;
+      if (!showFlashGames && g.special?.includes('flash')) return false;
+      if (!showPortGames && g.special?.includes('port')) return false;
+      if (!showEmulatorGames && g.special?.includes('emulator')) return false;
       return true;
     });
     if (normalizedQuery) {
@@ -149,7 +251,8 @@ export default function ArcadePage() {
         return nameMatch || tagMatch;
       });
     }
-    setFilteredGames(sortGames(gamesToDisplay, currentFavs));
+    gamesToDisplay.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    setFilteredGames(gamesToDisplay);
   };
 
   const setThemeStyle = (hexColor: string) => {
@@ -168,6 +271,21 @@ export default function ArcadePage() {
     setColorPalette(palette);
     setIsThemeLoaded(true);
     updateFaviconWithTheme(palette.bg, palette.text);
+  };
+
+  const playSplashIntro = () => {
+    if (!isThemeLoaded) return;
+
+    if (splashFadeTimerRef.current !== null) {
+      window.clearTimeout(splashFadeTimerRef.current);
+    }
+    if (splashRemoveTimerRef.current !== null) {
+      window.clearTimeout(splashRemoveTimerRef.current);
+    }
+
+    setSplashFading(false);
+    setShowSplash(false);
+    window.setTimeout(() => setShowSplash(true), 0);
   };
 
   const exportProgress = () => {
@@ -344,12 +462,18 @@ export default function ArcadePage() {
   useEffect(() => {
     if (!showSplash || !isThemeLoaded) return;
 
-    const fadeTimer = window.setTimeout(() => setSplashFading(true), 1400);
-    const removeTimer = window.setTimeout(() => setShowSplash(false), 1950);
+    splashFadeTimerRef.current = window.setTimeout(() => setSplashFading(true), 850);
+    splashRemoveTimerRef.current = window.setTimeout(() => setShowSplash(false), 1250);
 
     return () => {
-      window.clearTimeout(fadeTimer);
-      window.clearTimeout(removeTimer);
+      if (splashFadeTimerRef.current !== null) {
+        window.clearTimeout(splashFadeTimerRef.current);
+        splashFadeTimerRef.current = null;
+      }
+      if (splashRemoveTimerRef.current !== null) {
+        window.clearTimeout(splashRemoveTimerRef.current);
+        splashRemoveTimerRef.current = null;
+      }
     };
   }, [showSplash, isThemeLoaded]);
 
@@ -377,18 +501,24 @@ export default function ArcadePage() {
 
     const savedShowPortGames = getCookie('showPortGames');
     if (savedShowPortGames === null) {
-      setCookie('showPortGames', 'false');
-      setShowPortGames(false);
+      setCookie('showPortGames', 'true');
+      setShowPortGames(true);
     } else {
-      setShowPortGames(savedShowPortGames === 'true');
+      setShowPortGames(savedShowPortGames !== 'false');
     }
 
     const savedShowEmulatorGames = getCookie('showEmulatorGames');
     if (savedShowEmulatorGames === null) {
-      setCookie('showEmulatorGames', 'false');
-      setShowEmulatorGames(false);
+      setCookie('showEmulatorGames', 'true');
+      setShowEmulatorGames(true);
     } else {
-      setShowEmulatorGames(savedShowEmulatorGames === 'true');
+      setShowEmulatorGames(savedShowEmulatorGames !== 'false');
+    }
+
+    const savedSectionVisibility = getSectionVisibilityFromStorage();
+    setSectionVisibility(savedSectionVisibility);
+    if (getCookie(SECTION_VISIBILITY_COOKIE) === null) {
+      setCookie(SECTION_VISIBILITY_COOKIE, JSON.stringify(savedSectionVisibility));
     }
 
     // Load games, blacklist, and forced includes
@@ -402,6 +532,7 @@ export default function ArcadePage() {
         const blacklistIds = new Set(blacklist);
         const forcedGameIds = new Set(forcedGames);
         const allGamesList: Game[] = [];
+        const seenIds = new Set<number>();
 
         // Add CDN games
         if (gamesData?.length) {
@@ -416,7 +547,13 @@ export default function ArcadePage() {
               tags: [],
               special: g.special || []
             })) as Game[];
-          allGamesList.push(...cdnGames);
+          
+          cdnGames.forEach(game => {
+            if (!seenIds.has(game.gameID)) {
+              seenIds.add(game.gameID);
+              allGamesList.push(game);
+            }
+          });
         }
 
         // Add local games
@@ -425,15 +562,22 @@ export default function ArcadePage() {
             .map((g: any) => ({
               gameID: g.id,
               name: g.name,
-              path: g.url,
+              path: `/arcade/${g.id}`,
               thumbnail: g.cover,
               dateAdded: '0',
               tags: g.tags || [],
               special: g.special || []
             })) as Game[];
-          allGamesList.push(...local);
+          
+          local.forEach(game => {
+            if (!seenIds.has(game.gameID)) {
+              seenIds.add(game.gameID);
+              allGamesList.push(game);
+            }
+          });
         }
 
+        allGamesList.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
         setAllGames(allGamesList);
       })
       .catch(err => console.error('Error loading game list:', err));
@@ -455,7 +599,7 @@ export default function ArcadePage() {
     const sequence = ['t', 'r', 'e', 'e'];
     let currentIndex = 0;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() === sequence[currentIndex]) {
+      if (event.key && event.key.toLowerCase() === sequence[currentIndex]) {
         currentIndex++;
         if (currentIndex === sequence.length) {
           window.location.href = '/arcade/tree.html';
@@ -535,6 +679,9 @@ export default function ArcadePage() {
         searchQuery={searchQuery}
         onSearchChange={(value) => {
           setSearchQuery(value);
+          if (value.trim().toLowerCase() === 'splash') {
+            playSplashIntro();
+          }
           updateGamesDisplay(value);
         }}
       />
@@ -542,58 +689,211 @@ export default function ArcadePage() {
       {/* Main Content */}
       <div className="main-content">
         <div className="games-container">
-          {/* Recently Played */}
+          {/* Favourites */}
           <div className="grid-section">
-            <h2 className="grid-title">recently played</h2>
-            <div id="recentlyPlayedGrid">
-              {recentlyPlayed.length === 0 ? (
-                <p style={{ color: 'var(--link-color)' }}>you haven't played any games yet :(</p>
-              ) : (
-                recentlyPlayed.map(game => (
-                  <a
-                    key={`recent-${game.gameID}`}
-                    href={game.path}
-                    onClick={() => addRecentlyPlayed(game)}
-                    className="card"
-                    data-title={game.name}
-                  >
-                    <img src={game.thumbnail} alt={game.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />
-                  </a>
-                ))
-              )}
+            <div className="grid-title-container">
+              <h2 className="grid-title">favourites</h2>
+              <button
+                type="button"
+                className="section-toggle-button"
+                aria-label={sectionVisibility.favorites ? 'collapse favourites' : 'expand favourites'}
+                aria-expanded={sectionVisibility.favorites}
+                aria-controls="favoritesSectionContent"
+                onClick={() => toggleSectionVisibility('favorites')}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  className={`section-toggle-icon ${sectionVisibility.favorites ? 'is-open' : ''}`}
+                >
+                  <path d="M7 10l5 5 5-5" />
+                </svg>
+              </button>
+            </div>
+            <div
+              id="favoritesSectionContent"
+              className={`section-collapsible ${sectionVisibility.favorites ? 'is-open' : ''}`}
+              aria-hidden={!sectionVisibility.favorites}
+            >
+              <div className="section-collapsible-inner">
+                <div className="section-collapsible-body">
+                  <div id="favoritesGrid">
+                    {favorites.length === 0 ? (
+                      <p style={{ color: 'var(--link-color)' }}>you haven&apos;t favourited any games yet :(</p>
+                    ) : (
+                      favorites.map(game => (
+                        <a
+                          key={`favorite-${game.gameID}`}
+                          href={game.path}
+                          onClick={() => addRecentlyPlayed(game)}
+                          className={`card ${isFavorited(game) ? 'favorited' : ''}`}
+                          data-title={game.name}
+                        >
+                          <img src={game.thumbnail} alt={game.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', position: 'absolute', top: 0, left: 0 }} />
+                          <button
+                            type="button"
+                            className="favorite-badge"
+                            aria-label={isFavorited(game) ? `remove ${game.name} from favorites` : `add ${game.name} to favorites`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              toggleFavorite(game);
+                            }}
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              aria-hidden="true"
+                              className={`favorite-star ${isFavorited(game) ? 'is-filled' : ''}`}
+                            >
+                              <path d="M12 2.75l2.86 5.79 6.39.93-4.62 4.5 1.09 6.36L12 17.32l-5.72 3.01 1.09-6.36-4.62-4.5 6.39-.93L12 2.75z" />
+                            </svg>
+                          </button>
+                        </a>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+
+          {SHOW_RECENTLY_PLAYED_SECTION && (
+            <>
+              {/* Recently Played */}
+              <div className="grid-section">
+                <div className="grid-title-container">
+                  <h2 className="grid-title">recently played</h2>
+                  <button
+                    type="button"
+                    className="section-toggle-button"
+                    aria-label={sectionVisibility.recentlyPlayed ? 'collapse recently played' : 'expand recently played'}
+                    aria-expanded={sectionVisibility.recentlyPlayed}
+                    aria-controls="recentlyPlayedSectionContent"
+                    onClick={() => toggleSectionVisibility('recentlyPlayed')}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      className={`section-toggle-icon ${sectionVisibility.recentlyPlayed ? 'is-open' : ''}`}
+                    >
+                      <path d="M7 10l5 5 5-5" />
+                    </svg>
+                  </button>
+                </div>
+                <div
+                  id="recentlyPlayedSectionContent"
+                  className={`section-collapsible ${sectionVisibility.recentlyPlayed ? 'is-open' : ''}`}
+                  aria-hidden={!sectionVisibility.recentlyPlayed}
+                >
+                  <div className="section-collapsible-inner">
+                    <div className="section-collapsible-body">
+                      <div id="recentlyPlayedGrid">
+                        {recentlyPlayed.length === 0 ? (
+                          <p style={{ color: 'var(--link-color)' }}>you haven&apos;t played any games yet :(</p>
+                        ) : (
+                          recentlyPlayed.map(game => (
+                            <a
+                              key={`recent-${game.gameID}`}
+                              href={game.path}
+                              onClick={() => addRecentlyPlayed(game)}
+                              className="card"
+                              data-title={game.name}
+                            >
+                              <img src={game.thumbnail} alt={game.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />
+                            </a>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* All Games */}
           <div className="grid-section">
             <div className="grid-title-container">
               <h2 className="grid-title">all games ({filteredGames.length})</h2>
-            </div>
-            <div id="gameGrid">
-              {filteredGames.map(game => (
-                <a
-                  key={`game-${game.gameID}`}
-                  href={game.path}
-                  onClick={() => addRecentlyPlayed(game)}
-                  className={`card ${isFavorited(game) ? 'favorited' : ''}`}
-                  data-title={game.name}
+              <button
+                type="button"
+                className="section-toggle-button"
+                aria-label={sectionVisibility.allGames ? 'collapse all games' : 'expand all games'}
+                aria-expanded={sectionVisibility.allGames}
+                aria-controls="allGamesSectionContent"
+                onClick={() => toggleSectionVisibility('allGames')}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  className={`section-toggle-icon ${sectionVisibility.allGames ? 'is-open' : ''}`}
                 >
-                  <img src={game.thumbnail} alt={game.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', position: 'absolute', top: 0, left: 0 }} />
-                  <div
-                    className="favorite-badge"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      toggleFavorite(game);
-                    }}
-                  >
-                    {isFavorited(game) ? '★' : '☆'}
+                  <path d="M7 10l5 5 5-5" />
+                </svg>
+              </button>
+            </div>
+            <div
+              id="allGamesSectionContent"
+              className={`section-collapsible ${sectionVisibility.allGames ? 'is-open' : ''}`}
+              aria-hidden={!sectionVisibility.allGames}
+            >
+              <div className="section-collapsible-inner">
+                <div className="section-collapsible-body">
+                  <div id="gameGrid">
+                    {filteredGames.map(game => (
+                      <a
+                        key={`game-${game.gameID}`}
+                        href={game.path}
+                        onClick={() => addRecentlyPlayed(game)}
+                        className={`card ${isFavorited(game) ? 'favorited' : ''}`}
+                        data-title={game.name}
+                      >
+                        <img src={game.thumbnail} alt={game.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', position: 'absolute', top: 0, left: 0 }} />
+                        <button
+                          type="button"
+                          className="favorite-badge"
+                          aria-label={isFavorited(game) ? `remove ${game.name} from favorites` : `add ${game.name} to favorites`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleFavorite(game);
+                          }}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                            className={`favorite-star ${isFavorited(game) ? 'is-filled' : ''}`}
+                          >
+                            <path d="M12 2.75l2.86 5.79 6.39.93-4.62 4.5 1.09 6.36L12 17.32l-5.72 3.01 1.09-6.36-4.62-4.5 6.39-.93L12 2.75z" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          className="report-badge"
+                          aria-label={`report ${game.name}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openReportMenu(game);
+                          }}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                            className="report-icon"
+                          >
+                            <path d="M6 3.75v16.5" />
+                            <path d="M6 5.25h8.15l-.9 2.75 4.5 1.5-1.35 4H6" />
+                          </svg>
+                        </button>
+                        {game.tags?.includes('new') && (
+                          <div className="new-badge with-report">new</div>
+                        )}
+                      </a>
+                    ))}
                   </div>
-                  {game.tags?.includes('new') && (
-                    <div className="new-badge">new</div>
-                  )}
-                </a>
-              ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -632,6 +932,49 @@ export default function ArcadePage() {
         }}
       />
       <ProfilePanel isOpen={profileOpen} />
+
+      {reportMenuGame && (
+        <div className="report-modal-backdrop" onClick={closeReportMenu}>
+          <div className="report-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="report-modal-header">
+              <h3>report</h3>
+              <button type="button" className="report-modal-close" aria-label="Close report menu" onClick={closeReportMenu}>
+                x
+              </button>
+            </div>
+
+            <form className="report-form" onSubmit={handleReportSubmit}>
+              <label className="report-field">
+                <span>Type:</span>
+                <select value={reportType} onChange={(e) => setReportType(e.target.value as (typeof REPORT_TYPES)[number])}>
+                  {REPORT_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="report-field report-game-line">
+                <span>Game:</span> {reportMenuGame.name} (ID: {reportMenuGame.gameID})
+              </div>
+
+              <label className="report-field">
+                <span>Description:</span>
+                <textarea value={reportDescription} onChange={(e) => setReportDescription(e.target.value)} rows={7} />
+              </label>
+
+              <button type="submit" className="report-submit-button" disabled={isSubmittingReport}>
+                {isSubmittingReport ? 'Submitting...' : 'Submit'}
+              </button>
+              {reportSubmitMessage && <p className="report-status">{reportSubmitMessage}</p>}
+              <p className="report-note">
+                {session ? 'Responses may only be sent to signed-in accounts.' : 'You will not get a response if you are without an account.'}
+              </p>
+            </form>
+          </div>
+        </div>
+      )}
 
       {!session && requireSignIn && (
         <div

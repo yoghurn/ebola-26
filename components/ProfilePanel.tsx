@@ -365,7 +365,7 @@ export default function ProfilePanel({ isOpen }: ProfilePanelProps) {
     <>
       <div className={`profile-panel ${isOpen ? 'show' : ''}`}>
         <div className="settings-header">
-          <h3>profile</h3>
+          <h3>account</h3>
         </div>
 
         <section className="settings-section">

@@ -22,6 +22,92 @@
     margin-bottom: 20px;
 }
 
+.grid-title {
+    margin: 0;
+}
+
+.section-toggle-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--card-border-color);
+    border-radius: 3px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.section-toggle-button:hover,
+.section-toggle-button:focus-visible {
+    background-color: var(--card-overlay-color);
+    border-color: var(--link-hover-color);
+    color: var(--link-hover-color);
+    outline: none;
+}
+
+.section-toggle-icon {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transform: rotate(-90deg);
+    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.section-toggle-icon.is-open {
+    transform: rotate(0deg);
+}
+
+.section-collapsible {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    visibility: hidden;
+    overflow: hidden;
+    transition:
+        grid-template-rows 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.2s ease,
+        visibility 0s linear 0.32s;
+}
+
+.section-collapsible.is-open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    visibility: visible;
+    overflow: visible;
+    transition:
+        grid-template-rows 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.24s ease,
+        visibility 0s linear 0s;
+}
+
+.section-collapsible-inner {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.section-collapsible.is-open .section-collapsible-inner {
+    overflow: visible;
+}
+
+.section-collapsible-body {
+    transform: translateY(-10px);
+    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+}
+
+.section-collapsible.is-open .section-collapsible-body {
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
 .topbar {
     display: flex;
     justify-content: space-between;
@@ -292,29 +378,253 @@
     z-index: 10;
 }
 
+.new-badge.with-report {
+    top: 46px;
+}
+
 .favorite-badge {
     position: absolute;
     top: 10px;
     left: 10px;
     background-color: var(--bg-color);
     color: var(--text-color);
-    padding: 2px 6px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
     border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
     border: 1px solid var(--card-border-color);
     opacity: var(--bottombar-opacity);
     cursor: pointer;
     display: none;
     z-index: 10;
+    appearance: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+    transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, opacity 0.18s ease;
 }
 
 .card:hover .favorite-badge {
-    display: block;
+    display: flex;
 }
 
 .card.favorited .favorite-badge {
+    display: flex;
+}
+
+.report-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 4px;
+    border: 1px solid var(--card-border-color);
+    opacity: var(--bottombar-opacity);
+    cursor: pointer;
+    display: none;
+    z-index: 10;
+    appearance: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+    transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, opacity 0.18s ease;
+}
+
+.card:hover .report-badge {
+    display: flex;
+}
+
+.report-badge:hover,
+.report-badge:focus-visible {
+    background-color: var(--link-color);
+    border-color: var(--link-hover-color);
+    color: var(--bg-color);
+    opacity: 1;
+    transform: scale(1.08);
+    outline: none;
+}
+
+.favorite-badge:hover,
+.favorite-badge:focus-visible {
+    background-color: var(--link-color);
+    border-color: var(--link-hover-color);
+    color: var(--bg-color);
+    opacity: 1;
+    transform: scale(1.08);
+    outline: none;
+}
+
+.favorite-star {
+    width: 14px;
+    height: 14px;
     display: block;
+    margin: auto;
+    fill: transparent;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+}
+
+.favorite-star.is-filled {
+    fill: currentColor;
+}
+
+.report-icon {
+    width: 14px;
+    height: 14px;
+    display: block;
+    margin: auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.report-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 2050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.16);
+}
+
+.report-modal {
+    width: min(100%, 520px);
+    max-width: calc(100vw - 32px);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border: 2px solid var(--card-border-color);
+    border-radius: 10px;
+    padding: 18px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+}
+
+.report-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.report-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    text-transform: lowercase;
+}
+
+.report-modal,
+.report-modal button,
+.report-modal select,
+.report-modal textarea,
+.report-modal label {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Droid Sans Mono', 'Source Code Pro', 'Consolas', 'Courier New', monospace;
+}
+
+.report-modal-close {
+    width: auto;
+    height: auto;
+    border: 1px solid var(--card-border-color);
+    border-radius: 8px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+    padding: 10px 12px;
+    line-height: 1;
+}
+
+.report-form {
+    display: grid;
+    gap: 12px;
+    border: 1px solid var(--card-border-color);
+    border-radius: 8px;
+    padding: 14px;
+    background: color-mix(in srgb, var(--bg-color) 82%, white 4%);
+}
+
+.report-field {
+    display: grid;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.report-field span {
+    font-weight: 400;
+}
+
+.report-field select,
+.report-field textarea {
+    width: 100%;
+    border: 1px solid var(--card-border-color);
+    border-radius: 8px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    padding: 10px 12px;
+    font: inherit;
+    box-sizing: border-box;
+}
+
+.report-field textarea {
+    min-height: 150px;
+    resize: vertical;
+}
+
+.report-game-line {
+    line-height: 1.45;
+}
+
+.report-submit-button {
+    justify-self: start;
+    min-width: 110px;
+    border: 1px solid var(--card-border-color);
+    border-radius: 8px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+    font: inherit;
+    padding: 10px 12px;
+}
+
+.report-submit-button:disabled {
+    cursor: wait;
+    opacity: 0.7;
+}
+
+.report-status {
+    margin: -4px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-color);
+    opacity: 0.82;
+}
+
+.report-note {
+    margin: -4px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: color-mix(in srgb, var(--text-color) 78%, transparent);
+}
+
+.report-modal-close:hover,
+.report-modal-close:focus-visible,
+.report-submit-button:hover,
+.report-submit-button:focus-visible,
+.report-field select:focus-visible,
+.report-field textarea:focus-visible {
+    outline: none;
+    border-color: var(--link-hover-color);
+}
+
+.report-modal-close:hover,
+.report-submit-button:hover {
+    background-color: var(--card-overlay-color);
 }
 
 .tv-card {
@@ -494,7 +804,14 @@
     margin-top: 12px;
 }
 
-.settings-section-title,
+.settings-section-title {
+    margin-bottom: 10px;
+    color: var(--text-color);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
 .settings-panel label,
 .settings-panel button,
 .settings-panel input,
@@ -502,14 +819,6 @@
 .profile-panel button,
 .profile-panel input {
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Droid Sans Mono', 'Source Code Pro', 'Consolas', 'Courier New', monospace;
-}
-
-.settings-section-title {
-    margin-bottom: 10px;
-    color: var(--text-color);
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
 }
 
 .settings-label {
@@ -525,21 +834,25 @@
     align-items: center;
 }
 
-.settings-color-picker,
-.settings-text-input,
-.settings-panel button,
-.profile-panel button {
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    border: 1px solid var(--card-border-color);
-    border-radius: 8px;
-}
-
 .settings-color-picker {
     width: 56px;
     height: 44px;
     padding: 4px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--card-border-color);
+    border-radius: 8px;
     cursor: pointer;
+}
+
+.settings-text-input,
+.settings-panel button,
+.profile-panel button,
+.settings-color-picker {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--card-border-color);
+    border-radius: 8px;
 }
 
 .settings-text-input,
@@ -549,6 +862,11 @@
     padding: 10px 12px;
     box-sizing: border-box;
     font-size: 14px;
+}
+
+.settings-panel button,
+.profile-panel button {
+    cursor: pointer;
 }
 
 .settings-text-input:focus,
@@ -671,4 +989,5 @@
         left: 12px;
         width: auto;
     }
+
 }

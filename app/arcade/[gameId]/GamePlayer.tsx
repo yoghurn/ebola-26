@@ -8,12 +8,11 @@ import { updateFaviconWithTheme } from '../../../lib/faviconUtils';
 
 export default function GamePage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
+  const parsedGameId = Number.parseInt(gameId, 10);
   const router = useRouter();
   useOnlineCount();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loading, setLoading] = useState(true);
-  const [gameTitle, setGameTitle] = useState<string>('');
-  const [customColor, setCustomColor] = useState<string>('#FFFFFF');
   const [colorPalette, setColorPalette] = useState<ColorPalette>(generatePaletteFromHex('#FFFFFF'));
   const [showHomeButton, setShowHomeButton] = useState(true);
 
@@ -21,7 +20,6 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
     // Get custom color from cookie
     const colorCookie = document.cookie.split('; ').find(row => row.startsWith('customColor='));
     const color = colorCookie ? colorCookie.split('=')[1] : '#FFFFFF';
-    setCustomColor(color);
     const palette = generatePaletteFromHex(color);
     setColorPalette(palette);
     updateFaviconWithTheme(palette.bg, palette.text);
@@ -39,26 +37,46 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
 
     const loadGame = async () => {
       try {
-        // Fetch game data from CDN
-        const assetsRes = await fetch(`https://cdn.jsdelivr.net/gh/freebuisness/assets@master/zones.json?v=${Date.now()}`);
-        const games = await assetsRes.json();
-        const game = games.find((g: any) => g.id === parseInt(gameId));
-        
-        if (!game) {
-          throw new Error(`Game ${gameId} not found`);
-        }
+        const cacheBuster = Date.now();
+        let game: any;
+        let gameHtml: string;
 
-        setGameTitle(game.name);
-        document.title = game.name;
+        if (parsedGameId < 0) {
+          const localGamesRes = await fetch('/localGames.json');
+          const localGames = await localGamesRes.json();
+          game = localGames.find((g: any) => g.id === parsedGameId);
 
-        // Fetch the game HTML
-        const gameUrl = game.url.replace('{HTML_URL}', 'https://cdn.jsdelivr.net/gh/freebuisness/html@main');
-        let gameHtml = await fetch(`${gameUrl}?v=${Date.now()}`).then(r => r.text());
+          if (!game) {
+            throw new Error(`Game ${gameId} not found`);
+          }
 
-        // Fallback to main branch if not found
-        if (gameHtml.trim().startsWith("Couldn't find the requested file")) {
-          const fallbackUrl = game.url.replace('{HTML_URL}', 'https://cdn.jsdelivr.net/gh/freebuisness/html@main');
-          gameHtml = await fetch(fallbackUrl + '?v=' + Date.now()).then(r => r.text());
+          document.title = game.name;
+          if (iframe) {
+            iframe.src = `${game.url}?v=${cacheBuster}`;
+          }
+          setLoading(false);
+          return;
+        } else {
+          // Fetch game data from CDN
+          const assetsRes = await fetch(`https://cdn.jsdelivr.net/gh/freebuisness/assets@master/zones.json?v=${cacheBuster}`);
+          const games = await assetsRes.json();
+          game = games.find((g: any) => g.id === parsedGameId);
+
+          if (!game) {
+            throw new Error(`Game ${gameId} not found`);
+          }
+
+          document.title = game.name;
+
+          // Fetch the game HTML
+          const gameUrl = game.url.replace('{HTML_URL}', 'https://cdn.jsdelivr.net/gh/freebuisness/html@main');
+          gameHtml = await fetch(`${gameUrl}?v=${cacheBuster}`).then(r => r.text());
+
+          // Fallback to main branch if not found
+          if (gameHtml.trim().startsWith("Couldn't find the requested file")) {
+            const fallbackUrl = game.url.replace('{HTML_URL}', 'https://cdn.jsdelivr.net/gh/freebuisness/html@main');
+            gameHtml = await fetch(`${fallbackUrl}?v=${cacheBuster}`).then(r => r.text());
+          }
         }
 
         // Parse HTML and remove sidebarad1 and sidebarad2 divs using regex
@@ -141,75 +159,9 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
         HTMLCanvasElement.prototype.toDataURL = function() { return ""; };
     }
 })();
-
-// Handle window/document resize for responsive game resizing
-(function() {
-    const updateGameSize = () => {
-        const canvas = document.querySelector('canvas');
-        if (canvas) {
-            canvas.width = document.documentElement.clientWidth;
-            canvas.height = document.documentElement.clientHeight;
-        }
-        
-        // Update all body elements to fill space
-        document.documentElement.style.width = '100%';
-        document.documentElement.style.height = '100%';
-        document.body.style.width = '100%';
-        document.body.style.height = '100%';
-        
-        // Dispatch events
-        window.dispatchEvent(new Event('resize'));
-        window.dispatchEvent(new Event('orientationchange'));
-        if (window.onresize) window.onresize();
-    };
-    
-    // Listen to all resize events
-    window.addEventListener('resize', updateGameSize, true);
-    document.addEventListener('resize', updateGameSize, true);
-    
-    // Update when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            updateGameSize();
-            // Continue polling as a safety measure
-            setInterval(updateGameSize, 250);
-        });
-    } else {
-        updateGameSize();
-        setInterval(updateGameSize, 250);
-    }
-})();
 `;
 
-        // Inject comprehensive fullscreen CSS and script before closing head tag
-        const fullscreenCss = `<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-html, body {
-  width: 100% !important;
-  height: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-}
-body > * {
-  width: 100% !important;
-  height: 100% !important;
-}
-canvas {
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-}
-</style>`;
-
-        gameHtml = gameHtml.replace(/<\/head>/i, `${fullscreenCss}<script>${safetyScriptContent}</script></head>`);
+        gameHtml = gameHtml.replace(/<\/head>/i, `<script>${safetyScriptContent}</script></head>`);
 
         // Create a blob from the HTML and set iframe src to blob URL
         const blob = new Blob([gameHtml], { type: 'text/html;charset=utf-8' });
@@ -223,7 +175,6 @@ canvas {
       } catch (err) {
         console.error('Error loading game:', err);
         setLoading(false);
-        setGameTitle(`Game ${gameId}`);
         document.title = `Game ${gameId}`;
 
         // Display error in iframe

@@ -88,7 +88,7 @@ export default function Topbar({ color, onSettingsClick, onProfileClick, isSetti
         {onProfileClick && (
           <a
             id="profileButton"
-            aria-label="Open profile"
+            aria-label="Open account"
             onClick={onProfileClick}
             className={isProfileOpen ? 'settings-open' : undefined}
             style={{ cursor: 'pointer' }}

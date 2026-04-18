@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
   const email = usernameToEmail(username);
 
-  const { error } = await supabase.auth.admin.createUser({
+  const { data: createdUserData, error } = await supabase.auth.admin.createUser({
     email,
     password: code,
     email_confirm: true,
@@ -54,6 +54,23 @@ export async function POST(request: Request) {
     const message = error.message.toLowerCase();
     const status = message.includes('already') || message.includes('exists') ? 409 : 400;
     return NextResponse.json({ error: error.message }, { status });
+  }
+
+  if (!createdUserData?.user) {
+    return NextResponse.json(
+      { error: 'Account was created, but the profile record could not be initialized.' },
+      { status: 500 },
+    );
+  }
+
+  const { error: profileError } = await supabase.from('user_profiles').upsert({
+    user_id: createdUserData.user.id,
+    username,
+    updated_at: new Date().toISOString(),
+  });
+
+  if (profileError) {
+    return NextResponse.json({ error: profileError.message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
