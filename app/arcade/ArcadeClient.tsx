@@ -216,11 +216,6 @@ export default function ArcadeClient() {
           setShowEmulatorGames(nextValue);
           setCookie("showEmulatorGames", String(nextValue), 30);
         }}
-        maskOpenedGames={maskOpenedGames}
-        onMaskOpenedGamesToggle={(nextValue) => {
-          setMaskOpenedGames(nextValue);
-          setCookie("maskOpenedGames", String(nextValue), 30);
-        }}
       />
       <ProfilePanel isOpen={profileOpen} />
     </>
