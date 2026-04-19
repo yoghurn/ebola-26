@@ -89,20 +89,7 @@ export default function SettingsPanel({
               onChange={(e) => onHomeButtonToggle(e.target.checked)}
             />
           </label>
-          {typeof openGameAsAboutBlank === 'boolean' && onOpenGameAsAboutBlankToggle && (
-            <label htmlFor="openGameAsAboutBlankToggle" className="settings-switch">
-              <div>
-                <div className="settings-switch-title">mask game windows (suggested)</div>
-              </div>
-              <input
-                id="openGameAsAboutBlankToggle"
-                type="checkbox"
-                className="settings-toggle-checkbox"
-                checked={openGameAsAboutBlank}
-                onChange={(e) => onOpenGameAsAboutBlankToggle(e.target.checked)}
-              />
-            </label>
-          )}
+          
           <label htmlFor="showFlashGamesToggle" className="settings-switch">
             <div>
               <div className="settings-switch-title">show flash games</div>
@@ -139,6 +126,20 @@ export default function SettingsPanel({
               onChange={(e) => onShowEmulatorGamesToggle(e.target.checked)}
             />
           </label>
+          {typeof openGameAsAboutBlank === 'boolean' && onOpenGameAsAboutBlankToggle && (
+            <label htmlFor="openGameAsAboutBlankToggle" className="settings-switch">
+              <div>
+                <div className="settings-switch-title">open game as an about:blank (experimental)</div>
+              </div>
+              <input
+                id="openGameAsAboutBlankToggle"
+                type="checkbox"
+                className="settings-toggle-checkbox"
+                checked={openGameAsAboutBlank}
+                onChange={(e) => onOpenGameAsAboutBlankToggle(e.target.checked)}
+              />
+            </label>
+          )}
         </section>
 
         <section className="settings-section">

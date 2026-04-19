@@ -101,7 +101,7 @@ export default function ArcadePage() {
   const [showFlashGames, setShowFlashGames] = useState(true);
   const [showPortGames, setShowPortGames] = useState(true);
   const [showEmulatorGames, setShowEmulatorGames] = useState(true);
-  const [openGameAsAboutBlank, setOpenGameAsAboutBlank] = useState(true);
+  const [openGameAsAboutBlank, setOpenGameAsAboutBlank] = useState(false);
   const [isThemeLoaded, setIsThemeLoaded] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
   const [splashFading, setSplashFading] = useState(false);
@@ -595,8 +595,8 @@ export default function ArcadePage() {
 
     const savedOpenGameAsAboutBlank = getCookie('openGameAsAboutBlank');
     if (savedOpenGameAsAboutBlank === null) {
-      setCookie('openGameAsAboutBlank', 'true');
-      setOpenGameAsAboutBlank(true);
+      setCookie('openGameAsAboutBlank', 'false');
+      setOpenGameAsAboutBlank(false);
     } else {
       setOpenGameAsAboutBlank(savedOpenGameAsAboutBlank !== 'false');
     }

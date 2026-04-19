@@ -1,6 +1,6 @@
 {
   "name": "ebola-26",
-  "version": "1.9.4(b)",
+  "version": "1.9.4(3)",
   "private": true,
   "scripts": {
     "dev": "next dev",
