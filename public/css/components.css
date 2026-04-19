@@ -331,7 +331,7 @@
     aspect-ratio: 1/1;
     background-size: cover;
     background-position: center;
-    border-radius: 4px;
+    border-radius: 8px;
     border: 2px solid var(--card-border-color);
     cursor: pointer;
     position: relative;

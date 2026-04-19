@@ -9,6 +9,8 @@ interface SettingsPanelProps {
   onFileImport: (file: File) => void;
   showHomeButton: boolean;
   onHomeButtonToggle: (showHomeButton: boolean) => void;
+  openGameAsAboutBlank?: boolean;
+  onOpenGameAsAboutBlankToggle?: (openGameAsAboutBlank: boolean) => void;
   showFlashGames: boolean;
   onShowFlashGamesToggle: (showFlashGames: boolean) => void;
   showPortGames: boolean;
@@ -26,6 +28,8 @@ export default function SettingsPanel({
   onFileImport,
   showHomeButton,
   onHomeButtonToggle,
+  openGameAsAboutBlank,
+  onOpenGameAsAboutBlankToggle,
   showFlashGames,
   onShowFlashGamesToggle,
   showPortGames,
@@ -85,6 +89,20 @@ export default function SettingsPanel({
               onChange={(e) => onHomeButtonToggle(e.target.checked)}
             />
           </label>
+          {typeof openGameAsAboutBlank === 'boolean' && onOpenGameAsAboutBlankToggle && (
+            <label htmlFor="openGameAsAboutBlankToggle" className="settings-switch">
+              <div>
+                <div className="settings-switch-title">mask game windows (suggested)</div>
+              </div>
+              <input
+                id="openGameAsAboutBlankToggle"
+                type="checkbox"
+                className="settings-toggle-checkbox"
+                checked={openGameAsAboutBlank}
+                onChange={(e) => onOpenGameAsAboutBlankToggle(e.target.checked)}
+              />
+            </label>
+          )}
           <label htmlFor="showFlashGamesToggle" className="settings-switch">
             <div>
               <div className="settings-switch-title">show flash games</div>
@@ -127,10 +145,10 @@ export default function SettingsPanel({
           <div className="settings-section-title">data</div>
           <div className="settings-actions">
             <button id="exportProgress" onClick={onExport} className="settings-action">
-              export website data
+              download my data
             </button>
             <button id="importProgress" onClick={onImportClick} className="settings-action">
-              import website data
+              upload my data
             </button>
           </div>
         </section>

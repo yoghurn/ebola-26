@@ -32,6 +32,27 @@ export function rgbToHex(r: number, g: number, b: number): string {
   }).join('')}`;
 }
 
+export function getHexBrightness(hex: string): number {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 1;
+  return ((rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000) / 255;
+}
+
+export function clampHexBrightness(hex: string, minBrightness: number): string {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+
+  const brightness = getHexBrightness(hex);
+  if (brightness >= minBrightness) return hex;
+
+  const clampFactor = (minBrightness - brightness) / (1 - brightness);
+  const r = Math.round(rgb.r + (255 - rgb.r) * clampFactor);
+  const g = Math.round(rgb.g + (255 - rgb.g) * clampFactor);
+  const b = Math.round(rgb.b + (255 - rgb.b) * clampFactor);
+
+  return rgbToHex(r, g, b);
+}
+
 export function adjustBrightness(hex: string, percent: number): string {
   const rgb = hexToRgb(hex);
   if (!rgb) return hex;
@@ -49,22 +70,23 @@ export function generatePaletteFromHex(hex: string): ColorPalette {
     hex = '#FFFFFF'; // Default to white
   }
 
-  const lighterVariant = adjustBrightness(hex, -80); // Dark background
-  const darkerVariant = adjustBrightness(hex, -50); // Border
-  const lighterBorder = adjustBrightness(hex, -30); // Lighter border variant
+  const safeHex = clampHexBrightness(hex, 0.35);
+  const lighterVariant = adjustBrightness(safeHex, -80); // Dark background
+  const darkerVariant = adjustBrightness(safeHex, -50); // Border
+  const lighterBorder = adjustBrightness(safeHex, -30); // Lighter border variant
   const overlayRgb = hexToRgb(darkerVariant);
   const overlayColor = overlayRgb ? `rgba(${overlayRgb.r},${overlayRgb.g},${overlayRgb.b},0.75)` : 'rgba(33,13,0,0.75)';
 
   return {
     bg: lighterVariant, // Very dark background
-    text: hex, // Main color as text
+    text: safeHex, // Main color as text
     link: darkerVariant, // Darker for links
-    hover: hex, // Hover same as text
+    hover: safeHex, // Hover same as adjusted text
     border: lighterBorder, // Border is slightly lighter than dark
     overlay: overlayColor, // Overlay with transparency
     bottomBorder: darkerVariant, // Same as link color
     opacity: 0.6,
-    svgColor: hex, // SVG uses the main color
+    svgColor: safeHex, // SVG uses the adjusted color
   };
 }
 

@@ -1,4 +1,4 @@
-import ArcadePage from './arcade/page';
+import Page from './arcade/page';
 export default function Home() {
-  return <ArcadePage />;
+  return <Page />;
 }

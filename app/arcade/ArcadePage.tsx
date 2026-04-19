@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import Topbar from '../../components/Topbar';
 import SettingsPanel from '../../components/SettingsPanel';
@@ -22,7 +22,7 @@ interface Game {
   special?: string[];
 }
 
-const REPORT_TYPES = ['Game not loading', 'Bug Report', 'DMCA', 'Other'] as const;
+const REPORT_TYPES = ['gameNotLoading', 'bugReport', 'dmca', 'other'] as const;
 const SECTION_VISIBILITY_COOKIE = 'arcadeSectionVisibility';
 const SHOW_RECENTLY_PLAYED_SECTION = false;
 
@@ -36,6 +36,50 @@ const DEFAULT_SECTION_VISIBILITY: SectionVisibilityState = {
   favorites: true,
   recentlyPlayed: true,
   allGames: true,
+};
+
+const TRANSLATIONS: Record<string, string> = {
+  'auth.gateMessage': 'Sign in to access this feature.',
+  'favorites.title': 'Favorites',
+  'favorites.collapse': 'Hide favorites',
+  'favorites.expand': 'Show favorites',
+  'favorites.empty': 'No favorites yet.',
+  'favorites.remove': 'Remove {game} from favorites',
+  'favorites.add': 'Add {game} to favorites',
+  'recentlyPlayed.title': 'Recently Played',
+  'recentlyPlayed.collapse': 'Hide recently played games',
+  'recentlyPlayed.expand': 'Show recently played games',
+  'recentlyPlayed.empty': 'No recently played games yet.',
+  'allGames.title': '{count} Games',
+  'allGames.collapse': 'Hide all games',
+  'allGames.expand': 'Show all games',
+  'report.button': 'Report {game}',
+  'games.new': 'NEW',
+  'report.title': 'Report a Problem',
+  'report.close': 'Close report dialog',
+  'report.form.type': 'Report type',
+  'report.form.game': 'Game',
+  'report.form.description': 'Description',
+  'report.form.submitting': 'Submitting…',
+  'report.form.submit': 'Submit',
+  'report.note.signedIn': 'You are signed in.',
+  'report.note.notSignedIn': 'You are not signed in.',
+  'progress.errors.supabaseNotConfigured': 'Supabase is not configured.',
+  'progress.errors.signInRequired': 'Please sign in to save progress.',
+  'progress.success.savedWithDate': 'Saved on {date}.',
+  'progress.success.savedDefault': 'Progress saved successfully.',
+  'progress.errors.saveFailed': 'Failed to save progress.',
+  'progress.saving': 'Saving…',
+  'progress.save': 'Save progress',
+};
+
+const t = (key: string, params?: Record<string, string | number>) => {
+  const template = TRANSLATIONS[key] ?? key;
+  if (!params) return template;
+  return Object.entries(params).reduce(
+    (result, [paramKey, paramValue]) => result.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(paramValue)),
+    template,
+  );
 };
 
 export default function ArcadePage() {
@@ -57,13 +101,14 @@ export default function ArcadePage() {
   const [showFlashGames, setShowFlashGames] = useState(true);
   const [showPortGames, setShowPortGames] = useState(true);
   const [showEmulatorGames, setShowEmulatorGames] = useState(true);
+  const [openGameAsAboutBlank, setOpenGameAsAboutBlank] = useState(true);
   const [isThemeLoaded, setIsThemeLoaded] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
   const [splashFading, setSplashFading] = useState(false);
   const [splashLogoMarkup, setSplashLogoMarkup] = useState('');
   const [requireSignIn, setRequireSignIn] = useState(true);
   const [reportMenuGame, setReportMenuGame] = useState<Game | null>(null);
-  const [reportType, setReportType] = useState<(typeof REPORT_TYPES)[number]>('Game not loading');
+  const [reportType, setReportType] = useState<(typeof REPORT_TYPES)[number]>('gameNotLoading');
   const [reportDescription, setReportDescription] = useState('');
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportSubmitMessage, setReportSubmitMessage] = useState('');
@@ -116,6 +161,39 @@ export default function ArcadePage() {
       setCookie(SECTION_VISIBILITY_COOKIE, JSON.stringify(next));
       return next;
     });
+  };
+
+  const handleGameClick = (event: MouseEvent<HTMLAnchorElement>, game: Game) => {
+    addRecentlyPlayed(game);
+    if (!openGameAsAboutBlank) return;
+
+    event.preventDefault();
+    const newWindow = window.open('about:blank');
+    if (newWindow) {
+      // Instead of navigating to game.path, create an iframe to load the game while keeping the URL as about:blank
+      const iframeHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+            iframe { display: block; width: 100%; height: 100%; border: none; }
+          </style>
+        </head>
+        <body>
+          <iframe src="${game.path}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"></iframe>
+        </body>
+        </html>
+      `;
+      
+      newWindow.document.open();
+      newWindow.document.write(iframeHtml);
+      newWindow.document.close();
+    } else {
+      window.location.href = game.path;
+    }
   };
 
   // Recently Played
@@ -175,14 +253,14 @@ export default function ArcadePage() {
 
   const openReportMenu = (game: Game) => {
     setReportMenuGame(game);
-    setReportType('Game not loading');
+    setReportType('gameNotLoading');
     setReportDescription('');
     setReportSubmitMessage('');
   };
 
   const closeReportMenu = () => {
     setReportMenuGame(null);
-    setReportType('Game not loading');
+    setReportType('gameNotLoading');
     setReportDescription('');
     setReportSubmitMessage('');
     setIsSubmittingReport(false);
@@ -191,7 +269,7 @@ export default function ArcadePage() {
   const handleReportSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!reportMenuGame || !reportDescription.trim()) {
-      setReportSubmitMessage('description is required');
+      setReportSubmitMessage('Description is required');
       return;
     }
 
@@ -226,10 +304,10 @@ export default function ArcadePage() {
         throw new Error(payload?.error || 'could not submit report');
       }
 
-      setReportSubmitMessage('report submitted');
+      setReportSubmitMessage('Report submitted successfully');
       setReportDescription('');
     } catch (error) {
-      setReportSubmitMessage(error instanceof Error ? error.message.toLowerCase() : 'could not submit report');
+      setReportSubmitMessage(error instanceof Error ? error.message.toLowerCase() : 'Failed to submit report');
     } finally {
       setIsSubmittingReport(false);
     }
@@ -310,9 +388,9 @@ export default function ArcadePage() {
     reader.onload = () => {
       try {
         localStorage.setItem('gameProgress', JSON.stringify(JSON.parse(reader.result as string)));
-        alert('Game progress imported successfully!');
+        alert('Progress imported successfully');
       } catch {
-        alert('Invalid JSON file. Please select a valid game progress file.');
+        alert('Invalid file format');
       }
     };
     reader.readAsText(file);
@@ -321,7 +399,7 @@ export default function ArcadePage() {
   const saveProgressToCloud = async () => {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
-      setSaveProgressMessage('supabase is not configured');
+      setSaveProgressMessage(t('progress.errors.supabaseNotConfigured'));
       return;
     }
 
@@ -334,7 +412,7 @@ export default function ArcadePage() {
       } = await supabase.auth.getSession();
 
       if (!session) {
-        setSaveProgressMessage('sign in to save progress');
+        setSaveProgressMessage(t('progress.errors.signInRequired'));
         return;
       }
 
@@ -355,10 +433,10 @@ export default function ArcadePage() {
       }
 
       setSaveProgressMessage(
-        payload?.syncedAt ? `saved ${new Date(payload.syncedAt).toLocaleString()}` : 'progress saved',
+        payload?.syncedAt ? t('progress.success.savedWithDate', { date: new Date(payload.syncedAt).toLocaleString() }) : t('progress.success.savedDefault'),
       );
     } catch (error) {
-      setSaveProgressMessage(error instanceof Error ? error.message : 'could not save progress');
+      setSaveProgressMessage(error instanceof Error ? error.message : t('progress.errors.saveFailed'));
     } finally {
       setIsSavingProgress(false);
     }
@@ -515,6 +593,14 @@ export default function ArcadePage() {
       setShowEmulatorGames(savedShowEmulatorGames !== 'false');
     }
 
+    const savedOpenGameAsAboutBlank = getCookie('openGameAsAboutBlank');
+    if (savedOpenGameAsAboutBlank === null) {
+      setCookie('openGameAsAboutBlank', 'true');
+      setOpenGameAsAboutBlank(true);
+    } else {
+      setOpenGameAsAboutBlank(savedOpenGameAsAboutBlank !== 'false');
+    }
+
     const savedSectionVisibility = getSectionVisibilityFromStorage();
     setSectionVisibility(savedSectionVisibility);
     if (getCookie(SECTION_VISIBILITY_COOKIE) === null) {
@@ -658,7 +744,7 @@ export default function ArcadePage() {
         onSettingsClick={() => {
           if (!session && requireSignIn) {
             setProfileOpen(true);
-            setAuthGateMessage('you must have an account to use this site');
+            setAuthGateMessage(t('auth.gateMessage'));
             return;
           }
           setSettingsOpen(!settingsOpen);
@@ -692,11 +778,11 @@ export default function ArcadePage() {
           {/* Favourites */}
           <div className="grid-section">
             <div className="grid-title-container">
-              <h2 className="grid-title">favourites</h2>
+              <h2 className="grid-title">{t('favorites.title')}</h2>
               <button
                 type="button"
                 className="section-toggle-button"
-                aria-label={sectionVisibility.favorites ? 'collapse favourites' : 'expand favourites'}
+                aria-label={sectionVisibility.favorites ? t('favorites.collapse') : t('favorites.expand')}
                 aria-expanded={sectionVisibility.favorites}
                 aria-controls="favoritesSectionContent"
                 onClick={() => toggleSectionVisibility('favorites')}
@@ -719,13 +805,13 @@ export default function ArcadePage() {
                 <div className="section-collapsible-body">
                   <div id="favoritesGrid">
                     {favorites.length === 0 ? (
-                      <p style={{ color: 'var(--link-color)' }}>you haven&apos;t favourited any games yet :(</p>
+                      <p style={{ color: 'var(--link-color)' }}>{t('favorites.empty')}</p>
                     ) : (
                       favorites.map(game => (
                         <a
                           key={`favorite-${game.gameID}`}
                           href={game.path}
-                          onClick={() => addRecentlyPlayed(game)}
+                          onClick={(e) => handleGameClick(e, game)}
                           className={`card ${isFavorited(game) ? 'favorited' : ''}`}
                           data-title={game.name}
                         >
@@ -733,7 +819,7 @@ export default function ArcadePage() {
                           <button
                             type="button"
                             className="favorite-badge"
-                            aria-label={isFavorited(game) ? `remove ${game.name} from favorites` : `add ${game.name} to favorites`}
+                            aria-label={isFavorited(game) ? t('favorites.remove', { game: game.name }) : t('favorites.add', { game: game.name })}
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -762,11 +848,11 @@ export default function ArcadePage() {
               {/* Recently Played */}
               <div className="grid-section">
                 <div className="grid-title-container">
-                  <h2 className="grid-title">recently played</h2>
+                  <h2 className="grid-title">{t('recentlyPlayed.title')}</h2>
                   <button
                     type="button"
                     className="section-toggle-button"
-                    aria-label={sectionVisibility.recentlyPlayed ? 'collapse recently played' : 'expand recently played'}
+                    aria-label={sectionVisibility.recentlyPlayed ? t('recentlyPlayed.collapse') : t('recentlyPlayed.expand')}
                     aria-expanded={sectionVisibility.recentlyPlayed}
                     aria-controls="recentlyPlayedSectionContent"
                     onClick={() => toggleSectionVisibility('recentlyPlayed')}
@@ -789,13 +875,13 @@ export default function ArcadePage() {
                     <div className="section-collapsible-body">
                       <div id="recentlyPlayedGrid">
                         {recentlyPlayed.length === 0 ? (
-                          <p style={{ color: 'var(--link-color)' }}>you haven&apos;t played any games yet :(</p>
+                          <p style={{ color: 'var(--link-color)' }}>{t('recentlyPlayed.empty')}</p>
                         ) : (
                           recentlyPlayed.map(game => (
                             <a
                               key={`recent-${game.gameID}`}
                               href={game.path}
-                              onClick={() => addRecentlyPlayed(game)}
+                              onClick={(e) => handleGameClick(e, game)}
                               className="card"
                               data-title={game.name}
                             >
@@ -814,11 +900,11 @@ export default function ArcadePage() {
           {/* All Games */}
           <div className="grid-section">
             <div className="grid-title-container">
-              <h2 className="grid-title">all games ({filteredGames.length})</h2>
+              <h2 className="grid-title">{t('allGames.title', { count: filteredGames.length })}</h2>
               <button
                 type="button"
                 className="section-toggle-button"
-                aria-label={sectionVisibility.allGames ? 'collapse all games' : 'expand all games'}
+                aria-label={sectionVisibility.allGames ? t('allGames.collapse') : t('allGames.expand')}
                 aria-expanded={sectionVisibility.allGames}
                 aria-controls="allGamesSectionContent"
                 onClick={() => toggleSectionVisibility('allGames')}
@@ -844,7 +930,7 @@ export default function ArcadePage() {
                       <a
                         key={`game-${game.gameID}`}
                         href={game.path}
-                        onClick={() => addRecentlyPlayed(game)}
+                        onClick={(e) => handleGameClick(e, game)}
                         className={`card ${isFavorited(game) ? 'favorited' : ''}`}
                         data-title={game.name}
                       >
@@ -852,7 +938,7 @@ export default function ArcadePage() {
                         <button
                           type="button"
                           className="favorite-badge"
-                          aria-label={isFavorited(game) ? `remove ${game.name} from favorites` : `add ${game.name} to favorites`}
+                          aria-label={isFavorited(game) ? t('favorites.remove', { game: game.name }) : t('favorites.add', { game: game.name })}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -870,7 +956,7 @@ export default function ArcadePage() {
                         <button
                           type="button"
                           className="report-badge"
-                          aria-label={`report ${game.name}`}
+                          aria-label={t('report.button', { game: game.name })}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -887,7 +973,7 @@ export default function ArcadePage() {
                           </svg>
                         </button>
                         {game.tags?.includes('new') && (
-                          <div className="new-badge with-report">new</div>
+                          <div className="new-badge with-report">{t('games.new')}</div>
                         )}
                       </a>
                     ))}
@@ -915,6 +1001,11 @@ export default function ArcadePage() {
           setShowHomeButton(nextValue);
           setCookie('showHomeButton', String(nextValue));
         }}
+        openGameAsAboutBlank={openGameAsAboutBlank}
+        onOpenGameAsAboutBlankToggle={(nextValue) => {
+          setOpenGameAsAboutBlank(nextValue);
+          setCookie('openGameAsAboutBlank', String(nextValue));
+        }}
         showFlashGames={showFlashGames}
         onShowFlashGamesToggle={(nextValue) => {
           setShowFlashGames(nextValue);
@@ -937,15 +1028,15 @@ export default function ArcadePage() {
         <div className="report-modal-backdrop" onClick={closeReportMenu}>
           <div className="report-modal" onClick={(e) => e.stopPropagation()}>
             <div className="report-modal-header">
-              <h3>report</h3>
-              <button type="button" className="report-modal-close" aria-label="Close report menu" onClick={closeReportMenu}>
+              <h3>{t('report.title')}</h3>
+              <button type="button" className="report-modal-close" aria-label={t('report.close')} onClick={closeReportMenu}>
                 x
               </button>
             </div>
 
             <form className="report-form" onSubmit={handleReportSubmit}>
               <label className="report-field">
-                <span>Type:</span>
+                <span>{t('report.form.type')}:</span>
                 <select value={reportType} onChange={(e) => setReportType(e.target.value as (typeof REPORT_TYPES)[number])}>
                   {REPORT_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -956,20 +1047,20 @@ export default function ArcadePage() {
               </label>
 
               <div className="report-field report-game-line">
-                <span>Game:</span> {reportMenuGame.name} (ID: {reportMenuGame.gameID})
+                <span>{t('report.form.game')}:</span> {reportMenuGame.name} (ID: {reportMenuGame.gameID})
               </div>
 
               <label className="report-field">
-                <span>Description:</span>
+                <span>{t('report.form.description')}:</span>
                 <textarea value={reportDescription} onChange={(e) => setReportDescription(e.target.value)} rows={7} />
               </label>
 
               <button type="submit" className="report-submit-button" disabled={isSubmittingReport}>
-                {isSubmittingReport ? 'Submitting...' : 'Submit'}
+                {isSubmittingReport ? t('report.form.submitting') : t('report.form.submit')}
               </button>
               {reportSubmitMessage && <p className="report-status">{reportSubmitMessage}</p>}
               <p className="report-note">
-                {session ? 'Responses may only be sent to signed-in accounts.' : 'You will not get a response if you are without an account.'}
+                {session ? t('report.note.signedIn') : t('report.note.notSignedIn')}
               </p>
             </form>
           </div>
@@ -1044,18 +1135,49 @@ export default function ArcadePage() {
           type="button"
           onClick={saveProgressToCloud}
           disabled={isSavingProgress}
+          title={isSavingProgress ? t('progress.saving') : t('progress.save')}
           style={{
-            padding: '10px 14px',
+            position: 'fixed',
+            bottom: '80px',
+            right: '20px',
+            width: '50px',
+            height: '50px',
             borderRadius: '8px',
-            border: '1px solid var(--card-border-color)',
-            backgroundColor: 'var(--bg-color)',
-            color: 'var(--text-color)',
+            border: `1px solid ${colorPalette.border}`,
+            background: colorPalette.bg,
+            color: colorPalette.text,
             cursor: isSavingProgress ? 'default' : 'pointer',
-            fontFamily: "'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Droid Sans Mono', 'Source Code Pro', 'Consolas', 'Courier New', monospace",
-            fontSize: '13px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            transition: 'transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease',
+            padding: 0,
+            opacity: colorPalette.opacity
+          }}
+          onMouseEnter={(e) => {
+            if (!isSavingProgress) {
+              e.currentTarget.style.background = colorPalette.link;
+              e.currentTarget.style.borderColor = colorPalette.hover;
+              e.currentTarget.style.color = colorPalette.bg;
+              e.currentTarget.style.opacity = '1';
+              e.currentTarget.style.transform = 'scale(1.08)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = colorPalette.bg;
+            e.currentTarget.style.borderColor = colorPalette.border;
+            e.currentTarget.style.color = colorPalette.text;
+            e.currentTarget.style.opacity = String(colorPalette.opacity);
+            e.currentTarget.style.transform = 'scale(1)';
           }}
         >
-          {isSavingProgress ? 'saving...' : 'save progress'}
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="24" height="24" style={{ fill: 'currentColor' }}>
+            <g>
+              <path d="m30.71 7.29-6-6A1 1 0 0 0 24 1h-2v8a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2V1H4a3 3 0 0 0-3 3v24a3 3 0 0 0 3 3h2v-9a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v9h2a3 3 0 0 0 3-3V8a1 1 0 0 0-.29-.71z" />
+              <path d="M12 1h8v8h-8zM23 21H9a1 1 0 0 0-1 1v9h16v-9a1 1 0 0 0-1-1z" />
+            </g>
+          </svg>
         </button>
       </div>
 

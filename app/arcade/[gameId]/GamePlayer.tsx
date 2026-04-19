@@ -271,23 +271,31 @@ export default function GamePage({ params }: { params: Promise<{ gameId: string 
             width: '50px',
             height: '50px',
             borderRadius: '8px',
-            border: `2px solid ${colorPalette.bottomBorder}`,
-            background: colorPalette.overlay,
-            color: colorPalette.bottomBorder,
+            border: `1px solid ${colorPalette.border}`,
+            background: colorPalette.bg,
+            color: colorPalette.text,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
-            transition: 'all 0.3s ease',
-            padding: 0
+            transition: 'transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease',
+            padding: 0,
+            opacity: colorPalette.opacity
           }}
           onMouseEnter={(e) => {
-            const overlayWithHigherOpacity = colorPalette.overlay.replace(/0\.75\)/, '0.9)');
-            e.currentTarget.style.background = overlayWithHigherOpacity;
+            e.currentTarget.style.background = colorPalette.link;
+            e.currentTarget.style.borderColor = colorPalette.hover;
+            e.currentTarget.style.color = colorPalette.bg;
+            e.currentTarget.style.opacity = '1';
+            e.currentTarget.style.transform = 'scale(1.08)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = colorPalette.overlay;
+            e.currentTarget.style.background = colorPalette.bg;
+            e.currentTarget.style.borderColor = colorPalette.border;
+            e.currentTarget.style.color = colorPalette.text;
+            e.currentTarget.style.opacity = String(colorPalette.opacity);
+            e.currentTarget.style.transform = 'scale(1)';
           }}
         >
           <svg width="28" height="28" viewBox="0 0 460.298 460.297" style={{ fill: 'currentColor' }}>

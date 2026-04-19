@@ -9,7 +9,7 @@ import ProfilePanel from "@/components/ProfilePanel";
 import { generatePaletteFromHex } from "@/lib/colorUtils";
 import { updateFaviconWithTheme } from "@/lib/faviconUtils";
 
-const defaultColor = "#FFFFFF";
+const defaultColor = "#5affc0";
 
 export default function ArcadeClient() {
   const [customColor, setCustomColor] = useState(defaultColor);
@@ -19,6 +19,7 @@ export default function ArcadeClient() {
   const [showFlashGames, setShowFlashGames] = useState(true);
   const [showPortGames, setShowPortGames] = useState(true);
   const [showEmulatorGames, setShowEmulatorGames] = useState(true);
+  const [maskOpenedGames, setMaskOpenedGames] = useState(true);
 
   const getCookie = useCallback((name: string) => {
     const value = `; ${document.cookie}`;
@@ -121,6 +122,14 @@ export default function ArcadeClient() {
     } else {
       setShowEmulatorGames(savedShowEmulatorGames !== "false");
     }
+
+    const savedMaskOpenedGames = getCookie("maskOpenedGames");
+    if (savedMaskOpenedGames === null) {
+      setCookie("maskOpenedGames", "true", 30);
+      setMaskOpenedGames(true);
+    } else {
+      setMaskOpenedGames(savedMaskOpenedGames !== "false");
+    }
   }, [applyTheme, getCookie, setCookie]);
 
   useEffect(() => {
@@ -206,6 +215,11 @@ export default function ArcadeClient() {
         onShowEmulatorGamesToggle={(nextValue) => {
           setShowEmulatorGames(nextValue);
           setCookie("showEmulatorGames", String(nextValue), 30);
+        }}
+        maskOpenedGames={maskOpenedGames}
+        onMaskOpenedGamesToggle={(nextValue) => {
+          setMaskOpenedGames(nextValue);
+          setCookie("maskOpenedGames", String(nextValue), 30);
         }}
       />
       <ProfilePanel isOpen={profileOpen} />
