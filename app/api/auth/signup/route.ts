@@ -63,10 +63,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const { error: profileError } = await supabase.from('user_profiles').upsert({
+  const { error: profileError } = await supabase.from('user_game_progress').upsert({
     user_id: createdUserData.user.id,
-    username,
-    updated_at: new Date().toISOString(),
+    progress_json: {},
+    synced_at: new Date().toISOString(),
   });
 
   if (profileError) {

@@ -22,7 +22,7 @@ interface Game {
   special?: string[];
 }
 
-const REPORT_TYPES = ['gameNotLoading', 'bugReport', 'dmca', 'other'] as const;
+const REPORT_TYPES = ['Game not loading', 'Bug Report', 'DMCA', 'Other'] as const;
 const SECTION_VISIBILITY_COOKIE = 'arcadeSectionVisibility';
 const SHOW_RECENTLY_PLAYED_SECTION = false;
 
@@ -108,7 +108,7 @@ export default function ArcadePage() {
   const [splashLogoMarkup, setSplashLogoMarkup] = useState('');
   const [requireSignIn, setRequireSignIn] = useState(true);
   const [reportMenuGame, setReportMenuGame] = useState<Game | null>(null);
-  const [reportType, setReportType] = useState<(typeof REPORT_TYPES)[number]>('gameNotLoading');
+  const [reportType, setReportType] = useState<(typeof REPORT_TYPES)[number]>('Game not loading');
   const [reportDescription, setReportDescription] = useState('');
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportSubmitMessage, setReportSubmitMessage] = useState('');
@@ -253,14 +253,14 @@ export default function ArcadePage() {
 
   const openReportMenu = (game: Game) => {
     setReportMenuGame(game);
-    setReportType('gameNotLoading');
+    setReportType('Game not loading');
     setReportDescription('');
     setReportSubmitMessage('');
   };
 
   const closeReportMenu = () => {
     setReportMenuGame(null);
-    setReportType('gameNotLoading');
+    setReportType('Game not loading');
     setReportDescription('');
     setReportSubmitMessage('');
     setIsSubmittingReport(false);
