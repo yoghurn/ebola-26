@@ -1,1 +1,2 @@
-^C^C
+⚠ Port 3000 is in use by process 31960, using available port 3001 instead.
+⨯ Unable to acquire lock at C:\Users\Wolbe\Desktop\EBOLA_APRIL\ebola-26-1.9.4\.next\dev\lock, is another instance of next dev running?

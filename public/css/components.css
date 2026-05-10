@@ -219,34 +219,57 @@
     justify-content: center;
     overflow: hidden;
     opacity: 1;
-    transition: opacity 0.45s ease, transform 0.45s ease;
+    background:
+        linear-gradient(120deg, color-mix(in srgb, var(--card-border-color) 12%, transparent), transparent 34%),
+        linear-gradient(300deg, color-mix(in srgb, var(--link-hover-color) 10%, transparent), transparent 38%),
+        linear-gradient(135deg, color-mix(in srgb, var(--bg-color) 92%, #020202), var(--bg-color));
+    isolation: isolate;
+    transition: opacity 0.5s ease, transform 0.5s ease, filter 0.5s ease;
 }
 
 .startup-splash.fade-out {
     opacity: 0;
-    transform: scale(1.02);
+    transform: scale(1.035);
+    filter: blur(7px);
     pointer-events: none;
+}
+
+.startup-splash-vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.startup-splash-vignette {
+    z-index: 4;
+    background:
+        linear-gradient(180deg, rgba(0, 0, 0, 0.34), transparent 28%, transparent 72%, rgba(0, 0, 0, 0.34)),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.38), transparent 22%, transparent 78%, rgba(0, 0, 0, 0.38));
+    mix-blend-mode: multiply;
 }
 
 .startup-splash-glow {
     position: absolute;
-    width: min(52vw, 420px);
-    height: min(52vw, 420px);
-    border-radius: 999px;
+    width: min(74vw, 640px);
+    height: min(34vw, 260px);
     background:
-        radial-gradient(circle, color-mix(in srgb, var(--card-border-color) 30%, transparent) 0%, transparent 68%);
-    filter: blur(10px);
-    animation: splashGlow 1.6s ease-in-out infinite;
+        linear-gradient(90deg, transparent, color-mix(in srgb, var(--card-border-color) 30%, transparent), color-mix(in srgb, var(--text-color) 8%, transparent), color-mix(in srgb, var(--link-hover-color) 20%, transparent), transparent);
+    filter: blur(34px);
+    opacity: 0.62;
+    animation: splashGlow 1.25s ease-out both;
 }
 
 .startup-splash-logo {
     position: relative;
-    z-index: 1;
-    width: min(42vw, 260px);
-    height: min(20vw, 120px);
+    z-index: 2;
+    width: clamp(178px, 36vw, 312px);
+    height: clamp(64px, 14vw, 128px);
     color: var(--text-color);
-    filter: drop-shadow(0 0 26px color-mix(in srgb, var(--card-border-color) 35%, transparent));
-    animation: splashLogo 1.25s ease-in-out infinite;
+    filter:
+        drop-shadow(0 0 18px color-mix(in srgb, var(--text-color) 22%, transparent))
+        drop-shadow(0 0 34px color-mix(in srgb, var(--card-border-color) 34%, transparent));
+    transform-origin: center;
+    animation: splashLogo 1.05s cubic-bezier(0.2, 0.9, 0.2, 1) both;
 }
 
 .startup-splash-logo svg {
@@ -255,24 +278,41 @@
 }
 
 @keyframes splashGlow {
-    0%, 100% {
-        transform: scale(0.9);
-        opacity: 0.45;
+    0% {
+        transform: translateY(12px) scaleX(0.62);
+        opacity: 0;
     }
-    50% {
-        transform: scale(1.08);
-        opacity: 0.85;
+    100% {
+        transform: translateY(0) scaleX(1);
+        opacity: 0.62;
     }
 }
 
 @keyframes splashLogo {
-    0%, 100% {
-        transform: translateY(0) scale(0.96);
-        opacity: 0.82;
+    0% {
+        transform: translateY(12px) scale(0.82);
+        opacity: 0;
+        filter:
+            drop-shadow(0 0 3px color-mix(in srgb, var(--text-color) 12%, transparent))
+            drop-shadow(0 0 10px color-mix(in srgb, var(--card-border-color) 18%, transparent));
     }
-    50% {
-        transform: translateY(-4px) scale(1);
+    62% {
+        transform: translateY(-3px) scale(1.04);
         opacity: 1;
+    }
+    100% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .startup-splash *,
+    .startup-splash *::before,
+    .startup-splash *::after {
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 1ms !important;
     }
 }
 

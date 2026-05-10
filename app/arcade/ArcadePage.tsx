@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import Topbar from '../../components/Topbar';
 import SettingsPanel from '../../components/SettingsPanel';
@@ -101,7 +101,6 @@ export default function ArcadePage() {
   const [showFlashGames, setShowFlashGames] = useState(true);
   const [showPortGames, setShowPortGames] = useState(true);
   const [showEmulatorGames, setShowEmulatorGames] = useState(true);
-  const [openGameAsAboutBlank, setOpenGameAsAboutBlank] = useState(false);
   const [isThemeLoaded, setIsThemeLoaded] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
   const [splashFading, setSplashFading] = useState(false);
@@ -163,37 +162,8 @@ export default function ArcadePage() {
     });
   };
 
-  const handleGameClick = (event: MouseEvent<HTMLAnchorElement>, game: Game) => {
+  const handleGameClick = (game: Game) => {
     addRecentlyPlayed(game);
-    if (!openGameAsAboutBlank) return;
-
-    event.preventDefault();
-    const newWindow = window.open('about:blank');
-    if (newWindow) {
-      // Instead of navigating to game.path, create an iframe to load the game while keeping the URL as about:blank
-      const iframeHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
-            iframe { display: block; width: 100%; height: 100%; border: none; }
-          </style>
-        </head>
-        <body>
-          <iframe src="${game.path}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"></iframe>
-        </body>
-        </html>
-      `;
-      
-      newWindow.document.open();
-      newWindow.document.write(iframeHtml);
-      newWindow.document.close();
-    } else {
-      window.location.href = game.path;
-    }
   };
 
   // Recently Played
@@ -593,14 +563,6 @@ export default function ArcadePage() {
       setShowEmulatorGames(savedShowEmulatorGames !== 'false');
     }
 
-    const savedOpenGameAsAboutBlank = getCookie('openGameAsAboutBlank');
-    if (savedOpenGameAsAboutBlank === null) {
-      setCookie('openGameAsAboutBlank', 'false');
-      setOpenGameAsAboutBlank(false);
-    } else {
-      setOpenGameAsAboutBlank(savedOpenGameAsAboutBlank !== 'false');
-    }
-
     const savedSectionVisibility = getSectionVisibilityFromStorage();
     setSectionVisibility(savedSectionVisibility);
     if (getCookie(SECTION_VISIBILITY_COOKIE) === null) {
@@ -727,6 +689,7 @@ export default function ArcadePage() {
         }}>
           {showSplash && (
             <div className={`startup-splash ${splashFading ? 'fade-out' : ''}`}>
+              <div className="startup-splash-vignette" />
               <div className="startup-splash-glow" />
               <div
                 className="startup-splash-logo"
@@ -811,7 +774,7 @@ export default function ArcadePage() {
                         <a
                           key={`favorite-${game.gameID}`}
                           href={game.path}
-                          onClick={(e) => handleGameClick(e, game)}
+                          onClick={() => handleGameClick(game)}
                           className={`card ${isFavorited(game) ? 'favorited' : ''}`}
                           data-title={game.name}
                         >
@@ -881,7 +844,7 @@ export default function ArcadePage() {
                             <a
                               key={`recent-${game.gameID}`}
                               href={game.path}
-                              onClick={(e) => handleGameClick(e, game)}
+                              onClick={() => handleGameClick(game)}
                               className="card"
                               data-title={game.name}
                             >
@@ -930,7 +893,7 @@ export default function ArcadePage() {
                       <a
                         key={`game-${game.gameID}`}
                         href={game.path}
-                        onClick={(e) => handleGameClick(e, game)}
+                        onClick={() => handleGameClick(game)}
                         className={`card ${isFavorited(game) ? 'favorited' : ''}`}
                         data-title={game.name}
                       >
@@ -1000,11 +963,6 @@ export default function ArcadePage() {
         onHomeButtonToggle={(nextValue) => {
           setShowHomeButton(nextValue);
           setCookie('showHomeButton', String(nextValue));
-        }}
-        openGameAsAboutBlank={openGameAsAboutBlank}
-        onOpenGameAsAboutBlankToggle={(nextValue) => {
-          setOpenGameAsAboutBlank(nextValue);
-          setCookie('openGameAsAboutBlank', String(nextValue));
         }}
         showFlashGames={showFlashGames}
         onShowFlashGamesToggle={(nextValue) => {

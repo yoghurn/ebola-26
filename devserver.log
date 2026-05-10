@@ -1,84 +1,11 @@
 
-> ebola-26@0.1.0 dev
+> ebola-26@1.9.4(3) dev
 > next dev
 
 ▲ Next.js 16.1.5 (Turbopack)
-- Local:         http://localhost:3000
-- Network:       http://10.5.0.2:3000
+- Local:         http://localhost:3001
+- Network:       http://10.5.0.2:3001
 
 ✓ Starting...
-Creating turbopack project {
-  dir: 'C:\\Users\\Wolbe\\Desktop\\ebola-26-THEMAIN\\ebola-26-THEMAIN',
-  testMode: true
-}
-✓ Ready in 768ms
- GET /arcade 200 in 1225ms (compile: 963ms, render: 262ms)
- GET / 200 in 117ms (compile: 61ms, render: 56ms)
-✓ Compiled in 32ms
- GET / 200 in 184ms (compile: 80ms, render: 104ms)
- GET /arcade 200 in 297ms (compile: 168ms, render: 129ms)
- GET /arcade 200 in 191ms (compile: 7ms, render: 184ms)
- GET /arcade 200 in 88ms (compile: 6ms, render: 82ms)
-✓ Compiled in 158ms
- GET /arcade 200 in 242ms (compile: 107ms, render: 136ms)
- GET /arcade 200 in 89ms (compile: 9ms, render: 80ms)
- GET / 200 in 187ms (compile: 84ms, render: 102ms)
-✓ Compiled in 280ms
- GET /arcade 200 in 156ms (compile: 60ms, render: 96ms)
-✓ Compiled in 27ms
-✓ Compiled in 24ms
-✓ Compiled in 32ms
-✓ Compiled in 42ms
- GET /arcade 200 in 250ms (compile: 157ms, render: 93ms)
-✓ Compiled in 59ms
- GET /arcade 200 in 211ms (compile: 9ms, render: 202ms)
- GET /arcade 200 in 139ms (compile: 17ms, render: 122ms)
-✓ Compiled in 11ms
- GET /arcade 200 in 436ms (compile: 302ms, render: 135ms)
-✓ Compiled in 16ms
- GET /arcade 200 in 247ms (compile: 123ms, render: 124ms)
- GET /arcade 200 in 59ms (compile: 4ms, render: 55ms)
- GET /arcade 200 in 61ms (compile: 4ms, render: 56ms)
-✓ Compiled in 32ms
- GET /arcade 200 in 205ms (compile: 95ms, render: 110ms)
- GET /arcade/295 200 in 670ms (compile: 596ms, render: 73ms)
- GET /arcade 200 in 126ms (compile: 33ms, render: 93ms)
- GET /arcade 200 in 69ms (compile: 7ms, render: 62ms)
- GET /arcade 200 in 70ms (compile: 5ms, render: 65ms)
- GET /arcade 200 in 67ms (compile: 5ms, render: 62ms)
- GET /arcade 200 in 70ms (compile: 4ms, render: 65ms)
- GET /arcade 200 in 64ms (compile: 4ms, render: 59ms)
-✓ Compiled in 73ms
- GET /arcade 200 in 407ms (compile: 119ms, render: 288ms)
- GET /arcade/505 200 in 72ms (compile: 19ms, render: 53ms)
-✓ Compiled in 100ms
-✓ Compiled in 84ms
- GET /arcade 200 in 317ms (compile: 183ms, render: 135ms)
-✓ Compiled in 183ms
- GET /arcade 200 in 375ms (compile: 224ms, render: 151ms)
- GET /arcade 200 in 69ms (compile: 6ms, render: 63ms)
-✓ Compiled in 49ms
- GET /arcade 200 in 301ms (compile: 119ms, render: 181ms)
- GET /arcade/430 200 in 346ms (compile: 50ms, render: 296ms)
- GET /arcade 200 in 73ms (compile: 4ms, render: 69ms)
- GET /arcade 200 in 84ms (compile: 4ms, render: 80ms)
- GET /arcade 200 in 55ms (compile: 4ms, render: 51ms)
- GET /arcade 200 in 60ms (compile: 5ms, render: 55ms)
- GET /arcade 200 in 96ms (compile: 27ms, render: 69ms)
- GET /arcade 200 in 60ms (compile: 7ms, render: 53ms)
- GET /arcade 200 in 53ms (compile: 5ms, render: 49ms)
-✓ Compiled in 82ms
- GET /arcade 200 in 288ms (compile: 129ms, render: 159ms)
-✓ Compiled in 72ms
- GET /arcade 200 in 483ms (compile: 309ms, render: 173ms)
- GET /arcade 200 in 176ms (compile: 11ms, render: 164ms)
- GET /arcade/115 200 in 94ms (compile: 33ms, render: 62ms)
- GET /arcade 200 in 89ms (compile: 7ms, render: 82ms)
- GET /arcade 200 in 141ms (compile: 7ms, render: 134ms)
-✓ Compiled in 115ms
-✓ Compiled in 1442ms
- GET /arcade 200 in 304ms (compile: 145ms, render: 159ms)
- GET /arcade 200 in 152ms (compile: 16ms, render: 136ms)
- GET /arcade 200 in 75ms (compile: 7ms, render: 68ms)
-✓ Compiled in 59ms
- GET /arcade 200 in 353ms (compile: 149ms, render: 204ms)
+  Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+[?25h

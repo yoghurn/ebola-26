@@ -42,5 +42,11 @@
     "name": "Big Tower Tiny Square",
     "url": "/arcade/games/big_tower_tiny_square.html",
     "cover": "https://cdn.jsdelivr.net/gh/freebuisness/covers@main/67.png"
+  },
+  {
+    "id": -17,
+    "name": "Gunspin",
+    "url": "/arcade/games/gunspin.html",
+    "cover": "https://cdn.jsdelivr.net/gh/freebuisness/covers@main/91.png"
   }
 ]
